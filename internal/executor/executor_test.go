@@ -3,6 +3,7 @@ package executor
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -30,6 +31,62 @@ func TestApplyModifiedFile(t *testing.T) {
 	assertFileContent(t, path, "new\n")
 }
 
+func TestApplyModifiedFileDoesNotLeaveTempFile(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "file.txt")
+	if err := os.WriteFile(path, []byte("old\n"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	stage := &planner.StageResult{
+		Changes: []planner.FileChange{{
+			Path:   "file.txt",
+			Kind:   planner.FileChangeModified,
+			Staged: "new\n",
+		}},
+	}
+
+	if err := Apply(stage, root); err != nil {
+		t.Fatalf("Apply returned error: %v", err)
+	}
+	assertFileContent(t, path, "new\n")
+	assertNoOverpatchTempFiles(t, root)
+}
+
+func TestApplyModifiedFilePreservesPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not report POSIX file permissions reliably")
+	}
+
+	root := t.TempDir()
+	path := filepath.Join(root, "file.txt")
+	if err := os.WriteFile(path, []byte("old\n"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	if err := os.Chmod(path, 0o600); err != nil {
+		t.Fatalf("chmod fixture: %v", err)
+	}
+
+	stage := &planner.StageResult{
+		Changes: []planner.FileChange{{
+			Path:   "file.txt",
+			Kind:   planner.FileChangeModified,
+			Staged: "new\n",
+		}},
+	}
+
+	if err := Apply(stage, root); err != nil {
+		t.Fatalf("Apply returned error: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat file: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("permissions = %v, want %v", got, os.FileMode(0o600))
+	}
+}
+
 func TestApplyCreatedFile(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "new.txt")
@@ -46,6 +103,55 @@ func TestApplyCreatedFile(t *testing.T) {
 		t.Fatalf("Apply returned error: %v", err)
 	}
 	assertFileContent(t, path, "created\n")
+}
+
+func TestApplyCreatedFileDoesNotLeaveTempFile(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "new.txt")
+
+	stage := &planner.StageResult{
+		Changes: []planner.FileChange{{
+			Path:   "new.txt",
+			Kind:   planner.FileChangeCreated,
+			Staged: "created\n",
+		}},
+	}
+
+	if err := Apply(stage, root); err != nil {
+		t.Fatalf("Apply returned error: %v", err)
+	}
+	assertFileContent(t, path, "created\n")
+	assertNoOverpatchTempFiles(t, root)
+}
+
+func TestApplyCreatedFileUsesDefaultPermissions(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "new.txt")
+
+	stage := &planner.StageResult{
+		Changes: []planner.FileChange{{
+			Path:   "new.txt",
+			Kind:   planner.FileChangeCreated,
+			Staged: "created\n",
+		}},
+	}
+
+	if err := Apply(stage, root); err != nil {
+		t.Fatalf("Apply returned error: %v", err)
+	}
+	assertFileContent(t, path, "created\n")
+	assertNoOverpatchTempFiles(t, root)
+
+	if runtime.GOOS == "windows" {
+		return
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat file: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o644 {
+		t.Fatalf("permissions = %v, want %v", got, os.FileMode(0o644))
+	}
 }
 
 func TestApplyCreatedFileWithMissingParentDirs(t *testing.T) {
@@ -173,5 +279,19 @@ func assertFileContent(t *testing.T, path string, want string) {
 	}
 	if string(data) != want {
 		t.Fatalf("content = %q, want %q", string(data), want)
+	}
+}
+
+func assertNoOverpatchTempFiles(t *testing.T, dir string) {
+	t.Helper()
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read dir: %v", err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".overpatch-") {
+			t.Fatalf("left temp file behind: %s", filepath.Join(dir, entry.Name()))
+		}
 	}
 }

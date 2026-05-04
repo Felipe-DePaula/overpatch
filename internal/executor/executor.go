@@ -3,6 +3,7 @@ package executor
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -29,10 +30,11 @@ func applyFileChange(change planner.FileChange, root string) error {
 
 	switch change.Kind {
 	case planner.FileChangeModified:
-		if err := ensureExistingFile(path); err != nil {
+		info, err := existingFileInfo(path)
+		if err != nil {
 			return fmt.Errorf("applying %s: %w", change.Path, err)
 		}
-		if err := os.WriteFile(path, []byte(change.Staged), 0o600); err != nil {
+		if err := writeFileSafely(path, []byte(change.Staged), info.Mode().Perm()); err != nil {
 			return fmt.Errorf("applying %s: %w", change.Path, err)
 		}
 	case planner.FileChangeCreated:
@@ -45,7 +47,7 @@ func applyFileChange(change planner.FileChange, root string) error {
 		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 			return fmt.Errorf("applying %s: %w", change.Path, err)
 		}
-		if err := os.WriteFile(path, []byte(change.Staged), 0o600); err != nil {
+		if err := writeFileSafely(path, []byte(change.Staged), 0o644); err != nil {
 			return fmt.Errorf("applying %s: %w", change.Path, err)
 		}
 	case planner.FileChangeDeleted:
@@ -63,17 +65,67 @@ func applyFileChange(change planner.FileChange, root string) error {
 }
 
 func ensureExistingFile(path string) error {
+	_, err := existingFileInfo(path)
+	return err
+}
+
+func existingFileInfo(path string) (os.FileInfo, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("file does not exist")
+			return nil, fmt.Errorf("file does not exist")
 		}
-		return err
+		return nil, err
 	}
 	if info.IsDir() {
-		return fmt.Errorf("target is not a file")
+		return nil, fmt.Errorf("target is not a file")
 	}
+	return info, nil
+}
+
+func writeFileSafely(path string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(path)
+	temp, err := os.CreateTemp(dir, ".overpatch-*")
+	if err != nil {
+		return fmt.Errorf("writing temp file: %w", err)
+	}
+
+	tempPath := temp.Name()
+
+	n, err := temp.Write(data)
+	if err != nil {
+		if closeErr := temp.Close(); closeErr != nil {
+			return errorWithTempCleanup(fmt.Errorf("writing temp file: %w; closing temp file after write failure: %v", err, closeErr), tempPath)
+		}
+		return errorWithTempCleanup(fmt.Errorf("writing temp file: %w", err), tempPath)
+	}
+	if n != len(data) {
+		if closeErr := temp.Close(); closeErr != nil {
+			return errorWithTempCleanup(fmt.Errorf("writing temp file: %w; closing temp file after short write: %v", io.ErrShortWrite, closeErr), tempPath)
+		}
+		return errorWithTempCleanup(fmt.Errorf("writing temp file: %w", io.ErrShortWrite), tempPath)
+	}
+	if err := temp.Chmod(perm); err != nil {
+		if closeErr := temp.Close(); closeErr != nil {
+			return errorWithTempCleanup(fmt.Errorf("setting permissions: %w; closing temp file after chmod failure: %v", err, closeErr), tempPath)
+		}
+		return errorWithTempCleanup(fmt.Errorf("setting permissions: %w", err), tempPath)
+	}
+	if err := temp.Close(); err != nil {
+		return errorWithTempCleanup(fmt.Errorf("closing temp file: %w", err), tempPath)
+	}
+	if err := os.Rename(tempPath, path); err != nil {
+		return errorWithTempCleanup(fmt.Errorf("renaming temp file: %w", err), tempPath)
+	}
+
 	return nil
+}
+
+func errorWithTempCleanup(err error, tempPath string) error {
+	if removeErr := os.Remove(tempPath); removeErr != nil && !os.IsNotExist(removeErr) {
+		return fmt.Errorf("%w; removing temp file: %v", err, removeErr)
+	}
+	return err
 }
 
 func fullPath(root string, path string) string {
