@@ -58,6 +58,8 @@ overpatch apply ops.json        # apply atomically
 ## Documentation
 
 - [`docs/VISION.md`](docs/VISION.md) — what Overpatch is and is not
+- [`docs/PIPELINE.md`](docs/PIPELINE.md) — end-to-end flow and responsibility boundaries
+- [`docs/PRODUCER_CONTRACT.md`](docs/PRODUCER_CONTRACT.md) — obligations for humans/LLMs/agents producing Overpatch JSON
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — pipeline and module boundaries
 - [`docs/PROTOCOL.md`](docs/PROTOCOL.md) — JSON schema specification
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — versioned milestones

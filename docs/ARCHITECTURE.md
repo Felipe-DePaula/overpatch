@@ -1,5 +1,7 @@
 # Architecture
 
+> See [`docs/PIPELINE.md`](PIPELINE.md) for the end-to-end flow, including producer responsibilities before JSON reaches the executor.
+
 ## Pipeline
 
 ```

@@ -1,5 +1,7 @@
 # Overpatch Protocol v1
 
+> Documents are produced by a producer (human, LLM, agent, or provider). See [`docs/PRODUCER_CONTRACT.md`](PRODUCER_CONTRACT.md) for producer obligations.
+
 ## Document envelope
 
 Every Overpatch document is a single JSON object:
