@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Felipe-DePaula/overpatch/internal/diff"
 	"github.com/Felipe-DePaula/overpatch/internal/schema"
 )
 
@@ -347,47 +348,7 @@ func renderDiff(files map[string]*fileState, paths []string) string {
 		}
 		state := files[path]
 
-		builder.WriteString("--- ")
-		if state.existsOriginal {
-			builder.WriteString(path)
-		} else {
-			builder.WriteString("/dev/null")
-		}
-		builder.WriteByte('\n')
-		builder.WriteString("+++ ")
-		if state.existsStaged {
-			builder.WriteString(path)
-		} else {
-			builder.WriteString("/dev/null")
-		}
-		builder.WriteByte('\n')
-		builder.WriteString("@@\n")
-		if state.existsOriginal {
-			builder.WriteString(prefixLines("-", state.original))
-		}
-		if state.existsStaged {
-			builder.WriteString(prefixLines("+", state.staged))
-		}
-	}
-	return builder.String()
-}
-
-func prefixLines(prefix string, content string) string {
-	if content == "" {
-		return prefix + "\n"
-	}
-
-	lines := strings.SplitAfter(content, "\n")
-	var builder strings.Builder
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-		builder.WriteString(prefix)
-		builder.WriteString(line)
-		if !strings.HasSuffix(line, "\n") {
-			builder.WriteByte('\n')
-		}
+		builder.WriteString(diff.Unified(path, state.original, state.staged, state.existsOriginal, state.existsStaged))
 	}
 	return builder.String()
 }
