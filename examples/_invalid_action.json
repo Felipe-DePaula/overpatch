@@ -1,0 +1,9 @@
+{
+  "schema_version": "overpatch/v1",
+  "status": "success",
+  "reason": "",
+  "summary": "Demo of an invalid document used to exercise the CLI.",
+  "operations": [
+    {"id":"op_001","action":"frobnicate","path":"x.txt"}
+  ]
+}

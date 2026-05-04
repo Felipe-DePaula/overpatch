@@ -1,0 +1,9 @@
+{
+  "schema_version": "overpatch/v1",
+  "status": "success",
+  "reason": "",
+  "summary": "",
+  "operations": [
+    {"id":"op_001","action":"frobnicate","path":"x.txt"}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "schema_version": "wrong/v9",
+  "status": "success",
+  "reason": "",
+  "summary": "",
+  "operations": [
+    {"id":"op_001","action":"replace_text","path":"x.txt","find":"a","replace":"b","occurrence":"all","expected_occurrences":1}
+  ]
+}

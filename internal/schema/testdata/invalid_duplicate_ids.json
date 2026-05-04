@@ -1,0 +1,10 @@
+{
+  "schema_version": "overpatch/v1",
+  "status": "success",
+  "reason": "",
+  "summary": "",
+  "operations": [
+    {"id":"op_001","action":"replace_text","path":"a.txt","find":"x","replace":"y","occurrence":"all","expected_occurrences":1},
+    {"id":"op_001","action":"replace_text","path":"b.txt","find":"x","replace":"y","occurrence":"all","expected_occurrences":1}
+  ]
+}
