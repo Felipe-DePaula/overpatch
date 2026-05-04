@@ -1,71 +1,85 @@
 # Roadmap
 
-## v0.1 — Executor MVP
+Legend:
 
-The first boss. Goal: a working CLI that applies a JSON document to a local directory.
+- ✅ Done
+- 🟡 In progress
+- ⬜ Pending
 
-- [~] Project skeleton (Go module, Makefile, lint config)
-- [~] Schema structs and JSON Schema embedded
-- [~] CLI commands: `validate`, `plan`, `apply`, `inspect`, `version`
-- [ ] Actions: `replace_text`, `replace_lines`, `insert_before_lines`, `insert_after_lines`, `create`, `delete`
-- [ ] Three-phase commit (validate → stage → commit)
-- [ ] Path safety (traversal, absolute, blocklist)
-- [ ] Unified diff output
-- [~] Integration test against a fixture project
-- [ ] First release: `overpatch-{linux,darwin,windows}-{amd64,arm64}` binaries
+## v0.1: Executor MVP
 
-## v0.2 — Audit and polish
+The first boss. Goal: a working CLI that validates, previews, and applies an Overpatch JSON document to a local directory.
 
-- [ ] `.overpatch/runs/<timestamp>/` log directory
-- [ ] Structured error output (`--output=json`)
-- [ ] Color-aware terminal output, `--no-color` flag
-- [ ] Better diff rendering (side-by-side option)
-- [ ] `overpatch report <ops.json>` post-apply summary
+- 🟡 Project skeleton: Go module, Cobra CLI, Windows manifest, and basic repository structure are done. Makefile and lint configuration are pending.
+- 🟡 Schema structs and validation: structs, parser, structural validation, action-specific validation, and lexical path safety are done. JSON Schema embedding is pending.
+- 🟡 CLI commands: `validate`, `inspect`, and `version` are done. `plan` and `apply` are pending.
+- 🟡 Actions: action-specific input validation is done for `replace_text`, `replace_lines`, `insert_before_lines`, `insert_after_lines`, `create`, and `delete`. Runtime execution is pending.
+- ⬜ Three-phase commit: validate → stage → commit.
+- ✅ Path safety: lexical validation for traversal, absolute paths, and sensitive path blocklist is done. Physical root/symlink validation is pending for `plan`/`apply`.
+- ⬜ Unified diff output.
+- 🟡 Tests: schema and safety unit tests are done. Integration test against a fixture project is pending.
+- ⬜ First release: `overpatch-{linux,darwin,windows}-{amd64,arm64}` binaries.
 
-## v0.3 — Git integration
+## v0.2: Audit and polish
 
-- [ ] Refuse to apply on dirty working tree (default)
-- [ ] `--force-dirty` escape hatch
-- [ ] `overpatch rollback` (one-step `git reset --hard ORIG_HEAD`)
-- [ ] Suggest `git diff` after apply
+- ⬜ `.overpatch/runs/<timestamp>/` log directory.
+- ⬜ Persist input JSON, generated diff, execution report, and exit code for every run.
+- ⬜ Structured error output with `--output=json`.
+- ⬜ Color-aware terminal output and `--no-color` flag.
+- ⬜ Better diff rendering, including optional side-by-side view.
+- ⬜ `overpatch report <run-id>` to inspect a previous run summary.
 
-## v0.4 — Schema v1.1
+## v0.3: Git integration
 
-- [ ] `expected_match_count` (rename from `expected_occurrences` for line-based ops)
-- [ ] `hint_line` for disambiguation when content alone isn't unique
-- [ ] `pre_hash` optional file integrity check
-- [ ] `rationale` per operation, surfaced in audit logs
-- [ ] Backward-compat: still accepts v1 documents
+- ⬜ Detect whether the current directory is inside a Git repository.
+- ⬜ Refuse to apply on a dirty working tree by default.
+- ⬜ `--force-dirty` escape hatch.
+- ⬜ Suggest `git diff` after apply.
+- ⬜ `overpatch rollback` using Git when available.
+- ⬜ Preserve enough run metadata to explain what was applied.
 
-## v0.5 — Context Builder
+## v0.4: Schema v1.1
 
-- [ ] `overpatch dump` generates context pack
-- [ ] Respects `.gitignore`
-- [ ] Configurable blocklist (`node_modules`, `dist`, etc.)
-- [ ] Per-file size cap, total pack size cap
-- [ ] Binary detection (null byte heuristic)
-- [ ] Secret detection (gitleaks integration)
-- [ ] Line numbering in dump (for hint_line support)
+- ⬜ `expected_match_count` as a clearer successor to `expected_occurrences` for line-based operations.
+- ⬜ `hint_line` for disambiguation when content alone is not unique.
+- ⬜ Optional `pre_hash` file integrity check.
+- ⬜ Optional `rationale` per operation, surfaced in audit logs.
+- ⬜ Backward compatibility with v1 documents where reasonable.
 
-## v0.6 — Provider Gateway
+## v0.5: Context Builder
 
-- [ ] Provider interface with adapters:
-  - `manual` — write context to file, expect JSON back
-  - `anthropic` — Claude API
-  - `openai` — GPT API
-  - `ollama` — local HTTP
-- [ ] `overpatch plan --prompt "..." --provider=anthropic`
-- [ ] Retry loop with structured error feedback to the model
+- ⬜ `overpatch dump` generates a context pack.
+- ⬜ Respect `.gitignore`.
+- ⬜ Configurable blocklist such as `node_modules`, `dist`, `build`, and secrets.
+- ⬜ Per-file size cap and total context pack size cap.
+- ⬜ Binary detection using safe heuristics.
+- ⬜ Secret detection integration or built-in lightweight checks.
+- ⬜ Optional line numbering in dumps for future `hint_line` support.
 
-## v0.7 — Smart context
+## v0.6: Provider Gateway
 
-- [ ] Embeddings-based file ranking (Ollama + `nomic-embed-text`)
-- [ ] Tree-sitter signatures for non-included files
-- [ ] `overpatch dump --smart "<prompt>"` selects relevant subset
+- ⬜ Provider interface with adapters:
+  - `manual`: write context to file and expect JSON back.
+  - `anthropic`: Claude API.
+  - `openai`: OpenAI API.
+  - `ollama`: local HTTP provider.
+- ⬜ `overpatch plan --prompt "..." --provider=<provider>`.
+- ⬜ Retry loop using structured validation/staging errors as feedback to the model.
+- ⬜ Provider configuration file or environment variable support.
 
-## v1.0 — Stable toolkit
+## v0.7: Smart context
 
-- [ ] Schema v1 frozen
-- [ ] Distribution: Homebrew tap, Scoop bucket, signed binaries
-- [ ] Full documentation
-- [ ] Real-world example projects in `examples/projects/`
+- ⬜ Embeddings-based file ranking, for example with Ollama and `nomic-embed-text`.
+- ⬜ Tree-sitter signatures for files not fully included in the context pack.
+- ⬜ `overpatch dump --smart "<prompt>"` to select a relevant subset.
+- ⬜ Context budget reporting.
+
+## v1.0: Stable toolkit
+
+- ⬜ Schema v1 frozen.
+- ⬜ Stable executor behavior for all v1 actions.
+- ⬜ Cross-platform release binaries.
+- ⬜ Distribution through GitHub Releases.
+- ⬜ Optional Homebrew tap and Scoop bucket.
+- ⬜ Full documentation.
+- ⬜ Real-world example projects under `examples/projects/`.
