@@ -1,0 +1,7 @@
+{
+  "schema_version": "overpatch/v1",
+  "status": "no_changes",
+  "reason": "The requested term is already in the desired form throughout the project.",
+  "summary": "",
+  "operations": []
+}

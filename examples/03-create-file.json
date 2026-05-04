@@ -1,0 +1,14 @@
+{
+  "schema_version": "overpatch/v1",
+  "status": "success",
+  "reason": "",
+  "summary": "Creates an audit utility module.",
+  "operations": [
+    {
+      "id": "op_001",
+      "action": "create",
+      "path": "src/audit.ts",
+      "content": "export function auditLog(event: string): void {\n  console.log(`[audit] ${event}`);\n}\n"
+    }
+  ]
+}

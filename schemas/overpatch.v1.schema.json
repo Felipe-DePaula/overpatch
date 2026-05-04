@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://overpatch.dev/schemas/v1",
+  "title": "Overpatch Document v1",
+  "type": "object",
+  "required": ["schema_version", "status", "operations"],
+  "properties": {
+    "schema_version": { "const": "overpatch/v1" },
+    "status": { "enum": ["success", "no_changes", "failed"] },
+    "reason": { "type": "string" },
+    "summary": { "type": "string" },
+    "operations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/operation" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "success" } } },
+      "then": { "properties": { "operations": { "minItems": 1 } } }
+    },
+    {
+      "if": { "properties": { "status": { "enum": ["no_changes", "failed"] } } },
+      "then": { "properties": { "operations": { "maxItems": 0 } } }
+    }
+  ],
+  "$defs": {
+    "operation": {
+      "type": "object",
+      "required": ["id", "action", "path"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^op_[a-zA-Z0-9_]+$" },
+        "action": {
+          "enum": [
+            "replace_text",
+            "replace_lines",
+            "insert_before_lines",
+            "insert_after_lines",
+            "create",
+            "delete"
+          ]
+        },
+        "path": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "action": { "const": "replace_text" } } },
+          "then": {
+            "required": ["find", "replace", "occurrence", "expected_occurrences"],
+            "properties": {
+              "find": { "type": "string", "minLength": 1 },
+              "replace": { "type": "string" },
+              "occurrence": { "enum": ["all", "first"] },
+              "expected_occurrences": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "action": { "const": "replace_lines" } } },
+          "then": {
+            "required": ["find_lines", "replace_lines", "expected_occurrences"],
+            "properties": {
+              "find_lines": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+              "replace_lines": { "type": "array", "items": { "type": "string" } },
+              "expected_occurrences": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": { "enum": ["insert_before_lines", "insert_after_lines"] }
+            }
+          },
+          "then": {
+            "required": ["find_lines", "insert_lines", "expected_occurrences"],
+            "properties": {
+              "find_lines": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+              "insert_lines": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+              "expected_occurrences": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "action": { "const": "create" } } },
+          "then": {
+            "required": ["content"],
+            "properties": { "content": { "type": "string" } }
+          }
+        },
+        {
+          "if": { "properties": { "action": { "const": "delete" } } },
+          "then": {}
+        }
+      ]
+    }
+  }
+}

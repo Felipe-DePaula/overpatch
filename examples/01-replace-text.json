@@ -1,0 +1,17 @@
+{
+  "schema_version": "overpatch/v1",
+  "status": "success",
+  "reason": "",
+  "summary": "Replaces 'Hello World' with 'Olá Mundo' in the README.",
+  "operations": [
+    {
+      "id": "op_001",
+      "action": "replace_text",
+      "path": "README.md",
+      "find": "Hello World",
+      "replace": "Olá Mundo",
+      "occurrence": "all",
+      "expected_occurrences": 1
+    }
+  ]
+}

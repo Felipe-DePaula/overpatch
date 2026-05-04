@@ -1,0 +1,24 @@
+{
+  "schema_version": "overpatch/v1",
+  "status": "success",
+  "reason": "",
+  "summary": "Disables the login route by replacing its body.",
+  "operations": [
+    {
+      "id": "op_001",
+      "action": "replace_lines",
+      "path": "src/auth.ts",
+      "find_lines": [
+        "router.post('/login', async (req, res) => {",
+        "  return loginHandler(req, res);",
+        "});"
+      ],
+      "replace_lines": [
+        "router.post('/login', async (req, res) => {",
+        "  res.status(503).json({ error: 'login_disabled' });",
+        "});"
+      ],
+      "expected_occurrences": 1
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+bin/
+dist/
+.overpatch/
+*.test
+coverage.out
+.idea/
+.vscode/
+.DS_Store
+node_modules/
