@@ -14,6 +14,33 @@ Overpatch is a toolkit that lets AI propose code changes as structured JSON, whi
 4. **Fail loudly with structured errors.** Every failure must produce an error with a code, an operation ID, and enough context for an LLM to retry.
 5. **The executor never trusts the LLM.** Schema validation, path safety, occurrence counts — all enforced.
 
+## Repository boundary
+
+Agents must operate strictly inside the repository root.
+
+Before reading or editing files, agents should confirm the repository root with:
+
+```bash
+git rev-parse --show-toplevel
+git status --short
+```
+
+Under no circumstances should agents inspect, list, read, or modify files outside the repository root unless the user explicitly authorizes it for that exact task.
+
+This includes, but is not limited to:
+
+- user home directories
+- AppData
+- WindowsApps
+- Downloads
+- Documents
+- Desktop
+- OneDrive
+- parent directories
+- sibling directories
+
+If required tooling such as Go is not available in `PATH`, report the missing tool and stop. Do not search outside the repository to locate it.
+
 ## When editing this repo
 
 - **Do not** introduce dependencies casually. Each new dependency goes through review. Prefer the standard library.

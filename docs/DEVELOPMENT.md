@@ -1,5 +1,41 @@
 # Development
 
+## Prerequisites
+
+- Go installed and available in `PATH`
+
+Check:
+
+```powershell
+go version
+where go
+```
+
+On Windows, Go can be installed with:
+
+```powershell
+winget install GoLang.Go
+```
+
+After installing Go, close and reopen your terminal before running build commands.
+
+Common Windows install path:
+
+```text
+C:\Program Files\Go\bin
+```
+
+## Build check
+
+From the repository root:
+
+```powershell
+go test ./...
+go build -a -o .\overpatch.exe .\cmd\overpatch
+.\overpatch.exe version
+Remove-Item .\overpatch.exe -ErrorAction SilentlyContinue
+```
+
 ## Windows executable manifest
 
 On Windows, executables with names containing words such as `patch`, `update`, `setup`, or `install` may trigger User Account Control heuristics if they do not include an application manifest.
@@ -83,3 +119,23 @@ cmd/overpatch/rsrc_windows_amd64.syso
 ## Notes
 
 This Windows-specific manifest is only a build resource. It does not change Overpatch behavior, permissions, or security model. Overpatch should run as the current user and should not require administrator privileges for normal CLI usage.
+
+## Environment boundary for agents
+
+Agents and coding tools must operate only inside the repository root.
+
+If Go is not available in `PATH`, agents must report that fact and stop. They must not search user directories or system profile directories to locate Go.
+
+Do not inspect, list, read, or modify paths outside the repository root, including:
+
+- user home directories
+- AppData
+- WindowsApps
+- Downloads
+- Documents
+- Desktop
+- OneDrive
+- parent directories
+- sibling directories
+
+Use only repository-relative paths unless the user explicitly authorizes otherwise.

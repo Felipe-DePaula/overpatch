@@ -55,6 +55,12 @@ overpatch plan ops.json         # show diff without writing
 overpatch apply ops.json        # apply atomically
 ```
 
+## Development
+
+To build and test Overpatch locally, Go must be installed and available in your `PATH`.
+
+See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) for setup and build notes.
+
 ## Documentation
 
 - [`docs/VISION.md`](docs/VISION.md) — what Overpatch is and is not
