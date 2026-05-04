@@ -8,17 +8,29 @@ Legend:
 
 ## v0.1: Executor MVP
 
-The first boss. Goal: a working CLI that validates, previews, and applies an Overpatch JSON document to a local directory.
+The first boss. Goal: a working CLI that validates, previews, and applies an Overpatch JSON document to files in a local project.
 
-- 🟡 Project skeleton: Go module, Cobra CLI, Windows manifest, and basic repository structure are done. Makefile and lint configuration are pending.
+- ✅ Project skeleton: Go module, Cobra CLI, Windows manifest, and basic repository structure are done. Makefile and lint configuration are pending.
+- ✅ CLI commands: `version`, `validate`, and `inspect` are done.
+- 🟡 `plan`: implemented for `replace_text` with in-memory staging and simple textual diff. Planning for `create`, `delete`, and line-based actions is pending.
 - 🟡 Schema structs and validation: structs, parser, structural validation, action-specific validation, and lexical path safety are done. JSON Schema embedding is pending.
-- 🟡 CLI commands: `validate`, `inspect`, and `version` are done. `plan` and `apply` are pending.
-- 🟡 Actions: action-specific input validation is done for `replace_text`, `replace_lines`, `insert_before_lines`, `insert_after_lines`, `create`, and `delete`. Runtime execution is pending.
+- 🟡 Actions: action-specific input validation is done for `replace_text`, `replace_lines`, `insert_before_lines`, `insert_after_lines`, `create`, and `delete`. Runtime execution is partially done for `replace_text` planning only.
+- ⬜ `apply`: pending.
 - ⬜ Three-phase commit: validate → stage → commit.
 - ✅ Path safety: lexical validation for traversal, absolute paths, and sensitive path blocklist is done. Physical root/symlink validation is pending for `plan`/`apply`.
-- ⬜ Unified diff output.
-- 🟡 Tests: schema and safety unit tests are done. Integration test against a fixture project is pending.
+- 🟡 Unified diff output: simple textual diff exists for `replace_text` planning. Richer diff rendering is pending.
+- 🟡 Tests: schema, safety, and `replace_text` planner unit tests are done. Integration test against a fixture project is pending.
 - ⬜ First release: `overpatch-{linux,darwin,windows}-{amd64,arm64}` binaries.
+
+### File and directory scope
+
+In v0.1, operations target files, not directories. Directories are not first-class operation targets.
+
+- `create` creates files. It may later create missing parent directories implicitly, but the target of the operation remains a file.
+- `delete` removes files and must fail if the path points to a directory.
+- `replace_text`, `replace_lines`, `insert_before_lines`, and `insert_after_lines` modify existing files.
+- Directory operations such as `create_dir`, `delete_dir`, `delete_tree`, `move_dir`, and recursive operations are out of scope for v0.1.
+- Explicit directory support should be evaluated after v1.0, possibly in v1.1 or v2. If added, prefer safe and explicit operations such as `create_dir`, `delete_empty_dir`, `move_file`, and `rename_file`; avoid recursive `delete_dir` for safety.
 
 ## v0.2: Audit and polish
 
