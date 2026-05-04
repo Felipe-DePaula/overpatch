@@ -76,6 +76,20 @@ func Plan(doc *schema.Document, root string) (*Result, error) {
 			state := files[op.Path]
 			state.staged = replaceText(current, op.Find, op.Replace, op.Occurrence)
 			state.existsStaged = true
+		case schema.ActionReplaceLines:
+			current, err := stagedContent(root, op.Path, files)
+			if err != nil {
+				return nil, operationError(op.ID, "reading file: %v", err)
+			}
+
+			next, actual := replaceLineBlock(current, op.FindLines, op.ReplaceLines)
+			if actual != op.ExpectedOccurrences {
+				return nil, operationError(op.ID, "expected %d occurrence(s), found %d", op.ExpectedOccurrences, actual)
+			}
+
+			state := files[op.Path]
+			state.staged = next
+			state.existsStaged = true
 		case schema.ActionCreate:
 			if err := stageCreate(root, op, files); err != nil {
 				return nil, err
@@ -199,6 +213,62 @@ func replaceText(content string, find string, replace string, occurrence string)
 		return strings.Replace(content, find, replace, 1)
 	}
 	return strings.ReplaceAll(content, find, replace)
+}
+
+func replaceLineBlock(content string, findLines []string, replaceLines []string) (string, int) {
+	lines, trailingNewline := splitTextLines(content)
+	var next []string
+	count := 0
+
+	for i := 0; i < len(lines); {
+		if hasLineBlockAt(lines, findLines, i) {
+			next = append(next, replaceLines...)
+			i += len(findLines)
+			count++
+			continue
+		}
+
+		next = append(next, lines[i])
+		i++
+	}
+
+	return joinTextLines(next, trailingNewline), count
+}
+
+func splitTextLines(content string) ([]string, bool) {
+	normalized := strings.ReplaceAll(content, "\r\n", "\n")
+	normalized = strings.ReplaceAll(normalized, "\r", "\n")
+	trailingNewline := strings.HasSuffix(normalized, "\n")
+	if trailingNewline {
+		normalized = strings.TrimSuffix(normalized, "\n")
+	}
+	if normalized == "" {
+		if trailingNewline {
+			return []string{""}, true
+		}
+		return nil, false
+	}
+	return strings.Split(normalized, "\n"), trailingNewline
+}
+
+func joinTextLines(lines []string, trailingNewline bool) string {
+	content := strings.Join(lines, "\n")
+	if trailingNewline {
+		return content + "\n"
+	}
+	return content
+}
+
+func hasLineBlockAt(lines []string, findLines []string, start int) bool {
+	if start+len(findLines) > len(lines) {
+		return false
+	}
+	for i, findLine := range findLines {
+		if lines[start+i] != findLine {
+			return false
+		}
+	}
+	return true
 }
 
 func changedFilePaths(files map[string]*fileState) []string {

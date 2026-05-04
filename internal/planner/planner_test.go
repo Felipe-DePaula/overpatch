@@ -114,10 +114,10 @@ func TestPlanReplaceTextOccurrenceMismatch(t *testing.T) {
 func TestPlanUnsupportedAction(t *testing.T) {
 	doc := successDoc(schema.Operation{
 		ID:                  "op_001",
-		Action:              schema.ActionReplaceLines,
+		Action:              schema.ActionInsertAfterLines,
 		Path:                "README.md",
 		FindLines:           []string{"old"},
-		ReplaceLines:        []string{"new"},
+		InsertLines:         []string{"new"},
 		ExpectedOccurrences: 1,
 	})
 
@@ -138,6 +138,150 @@ func TestPlanMissingFile(t *testing.T) {
 		Find:                "Hello World",
 		Replace:             "Ola Mundo",
 		Occurrence:          "all",
+		ExpectedOccurrences: 1,
+	})
+
+	_, err := Plan(doc, t.TempDir())
+	if err == nil {
+		t.Fatal("Plan returned nil error, want missing file error")
+	}
+	if !strings.Contains(err.Error(), "reading file") {
+		t.Fatalf("error = %q, want reading file", err)
+	}
+}
+
+func TestPlanReplaceLinesSuccess(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "README.md")
+	original := "before\nold line 1\nold line 2\nafter\n"
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	doc := successDoc(schema.Operation{
+		ID:                  "op_001",
+		Action:              schema.ActionReplaceLines,
+		Path:                "README.md",
+		FindLines:           []string{"old line 1", "old line 2"},
+		ReplaceLines:        []string{"new line 1", "new line 2"},
+		ExpectedOccurrences: 1,
+	})
+
+	result, err := Plan(doc, root)
+	if err != nil {
+		t.Fatalf("Plan returned error: %v", err)
+	}
+	if result.Status != StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	}
+	if !strings.Contains(result.Diff, "old line 1") {
+		t.Errorf("Diff should contain old line:\n%s", result.Diff)
+	}
+	if !strings.Contains(result.Diff, "new line 1") {
+		t.Errorf("Diff should contain new line:\n%s", result.Diff)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read fixture after plan: %v", err)
+	}
+	if string(data) != original {
+		t.Errorf("file was modified on disk: got %q, want %q", string(data), original)
+	}
+}
+
+func TestPlanReplaceLinesRemoveBlock(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "README.md")
+	original := "before\nremove line 1\nremove line 2\nafter\n"
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	doc := successDoc(schema.Operation{
+		ID:                  "op_001",
+		Action:              schema.ActionReplaceLines,
+		Path:                "README.md",
+		FindLines:           []string{"remove line 1", "remove line 2"},
+		ReplaceLines:        []string{},
+		ExpectedOccurrences: 1,
+	})
+
+	result, err := Plan(doc, root)
+	if err != nil {
+		t.Fatalf("Plan returned error: %v", err)
+	}
+	if !strings.Contains(result.Diff, "-remove line 1") {
+		t.Errorf("Diff should show removed block:\n%s", result.Diff)
+	}
+	if strings.Contains(result.Diff, "+remove line 1") {
+		t.Errorf("Diff should not keep removed block in staged content:\n%s", result.Diff)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read fixture after plan: %v", err)
+	}
+	if string(data) != original {
+		t.Errorf("file was modified on disk: got %q, want %q", string(data), original)
+	}
+}
+
+func TestPlanReplaceLinesMultipleOccurrences(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("old\nblock\nmiddle\nold\nblock\n"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	doc := successDoc(schema.Operation{
+		ID:                  "op_001",
+		Action:              schema.ActionReplaceLines,
+		Path:                "README.md",
+		FindLines:           []string{"old", "block"},
+		ReplaceLines:        []string{"new", "block"},
+		ExpectedOccurrences: 2,
+	})
+
+	result, err := Plan(doc, root)
+	if err != nil {
+		t.Fatalf("Plan returned error: %v", err)
+	}
+	if strings.Count(result.Diff, "+new") != 2 {
+		t.Errorf("Diff should contain both replacements:\n%s", result.Diff)
+	}
+}
+
+func TestPlanReplaceLinesOccurrenceMismatch(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("old line 1\nold line 2\n"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	doc := successDoc(schema.Operation{
+		ID:                  "op_001",
+		Action:              schema.ActionReplaceLines,
+		Path:                "README.md",
+		FindLines:           []string{"old line 1", "old line 2"},
+		ReplaceLines:        []string{"new line 1"},
+		ExpectedOccurrences: 2,
+	})
+
+	_, err := Plan(doc, root)
+	if err == nil {
+		t.Fatal("Plan returned nil error, want mismatch error")
+	}
+	if !strings.Contains(err.Error(), "expected 2 occurrence(s), found 1") {
+		t.Fatalf("error = %q, want occurrence mismatch", err)
+	}
+}
+
+func TestPlanReplaceLinesMissingFile(t *testing.T) {
+	doc := successDoc(schema.Operation{
+		ID:                  "op_001",
+		Action:              schema.ActionReplaceLines,
+		Path:                "README.md",
+		FindLines:           []string{"old line 1", "old line 2"},
+		ReplaceLines:        []string{"new line 1"},
 		ExpectedOccurrences: 1,
 	})
 
@@ -308,13 +452,13 @@ func TestPlanDeleteDirectoryFails(t *testing.T) {
 	}
 }
 
-func TestPlanUnsupportedActionStillFails(t *testing.T) {
+func TestPlanUnsupportedInsertBeforeStillFails(t *testing.T) {
 	doc := successDoc(schema.Operation{
 		ID:                  "op_001",
-		Action:              schema.ActionReplaceLines,
+		Action:              schema.ActionInsertBeforeLines,
 		Path:                "README.md",
 		FindLines:           []string{"old"},
-		ReplaceLines:        []string{"new"},
+		InsertLines:         []string{"new"},
 		ExpectedOccurrences: 1,
 	})
 
