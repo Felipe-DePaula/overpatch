@@ -64,7 +64,7 @@ If you are an LLM being asked to produce an Overpatch document for a user's proj
 
 - `cmd/overpatch/` — CLI entrypoint only. No business logic.
 - `internal/` — all implementation. Not importable by other modules.
-- `schemas/` — canonical JSON Schema files. Embedded into the binary.
+- `schemas/` — canonical JSON Schema files. Runtime embedding is planned, not implemented yet.
 - `examples/` — working examples used in docs and tests.
 - `experiments/` — research artifacts. Not shipped. Not stable.
 - `docs/` — design documents. Update them when behavior changes.

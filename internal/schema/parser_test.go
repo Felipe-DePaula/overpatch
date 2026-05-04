@@ -137,4 +137,47 @@ func TestParseFile(t *testing.T) {
 			t.Errorf("expected error to contain %q and %q, got: %v", "path invalid", "path traversal", err)
 		}
 	})
+
+	t.Run("InvalidOperationIDNoPrefix", func(t *testing.T) {
+		_, err := ParseFile("testdata/invalid_operation_id_no_prefix.json")
+		if err == nil {
+			t.Errorf("expected error, got nil")
+		} else if !strings.Contains(err.Error(), "id invalid") {
+			t.Errorf("expected error to contain %q, got: %v", "id invalid", err)
+		}
+	})
+
+	t.Run("InvalidOperationIDHyphen", func(t *testing.T) {
+		_, err := ParseFile("testdata/invalid_operation_id_hyphen.json")
+		if err == nil {
+			t.Errorf("expected error, got nil")
+		} else if !strings.Contains(err.Error(), "id invalid") {
+			t.Errorf("expected error to contain %q, got: %v", "id invalid", err)
+		}
+	})
+
+	t.Run("InvalidOperationIDSpace", func(t *testing.T) {
+		_, err := ParseFile("testdata/invalid_operation_id_space.json")
+		if err == nil {
+			t.Errorf("expected error, got nil")
+		} else if !strings.Contains(err.Error(), "id invalid") {
+			t.Errorf("expected error to contain %q, got: %v", "id invalid", err)
+		}
+	})
+
+	t.Run("InvalidOperationIDEmptySuffix", func(t *testing.T) {
+		_, err := ParseFile("testdata/invalid_operation_id_empty_suffix.json")
+		if err == nil {
+			t.Errorf("expected error, got nil")
+		} else if !strings.Contains(err.Error(), "id invalid") {
+			t.Errorf("expected error to contain %q, got: %v", "id invalid", err)
+		}
+	})
+
+	t.Run("ValidOperationIDWithLettersDigitsUnderscore", func(t *testing.T) {
+		_, err := ParseFile("testdata/valid_operation_id_with_letters_digits_underscore.json")
+		if err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+	})
 }

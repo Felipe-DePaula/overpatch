@@ -2,10 +2,13 @@ package schema
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/Felipe-DePaula/overpatch/internal/safety"
 )
+
+var operationIDPattern = regexp.MustCompile(`^op_[A-Za-z0-9_]+$`)
 
 var allowedActions = map[string]bool{
 	ActionReplaceText:       true,
@@ -55,7 +58,10 @@ func ValidateDocument(doc *Document) error {
 	seen := make(map[string]bool, len(doc.Operations))
 	for i, op := range doc.Operations {
 		if op.ID == "" {
-			return fmt.Errorf("operation %d (id=%q): missing id", i, op.ID)
+			return fmt.Errorf("operation %d (id=%q): id required", i, op.ID)
+		}
+		if !operationIDPattern.MatchString(op.ID) {
+			return fmt.Errorf("operation %s: id invalid: must match ^op_[A-Za-z0-9_]+$", op.ID)
 		}
 		if !allowedActions[op.Action] {
 			return fmt.Errorf("operation %s: action invalid: %q", op.ID, op.Action)

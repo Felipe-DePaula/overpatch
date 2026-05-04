@@ -1,0 +1,16 @@
+{
+  "schema_version": "overpatch/v1",
+  "status": "success",
+  "reason": "",
+  "operations": [
+    {
+      "id": "op_",
+      "action": "replace_text",
+      "path": "README.md",
+      "find": "old",
+      "replace": "new",
+      "occurrence": "all",
+      "expected_occurrences": 1
+    }
+  ]
+}

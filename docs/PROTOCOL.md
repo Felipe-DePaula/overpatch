@@ -38,9 +38,15 @@ Every operation has these common fields:
 
 | Field    | Type   | Required | Notes                                   |
 | -------- | ------ | -------- | --------------------------------------- |
-| `id`     | string | yes      | Unique within the document, e.g. `op_001` |
+| `id`     | string | yes      | Unique within the document; must match `^op_[A-Za-z0-9_]+$` |
 | `action` | enum   | yes      | One of the actions below                |
 | `path`   | string | yes      | Relative path from project root         |
+
+Operation `id` format:
+- Must start with `op_` (literal prefix).
+- Followed by one or more ASCII letters (A-Z, a-z), digits (0-9), or underscores (`_`).
+- Examples: `op_001`, `op_replace_login`, `op_A1`, `op_abc_123`.
+- Invalid examples: `001` (no prefix), `op-001` (hyphen), `op 001` (space), `op_` (empty suffix).
 
 ## Actions (v1)
 
@@ -131,6 +137,14 @@ Delete an existing file. Fails if the file does not exist.
   "path": "src/legacy.ts"
 }
 ```
+
+## Schema and validation
+
+`schemas/overpatch.v1.schema.json` is the canonical JSON Schema specification for Overpatch v1 documents.
+
+In the current v0.1 development state, Overpatch runtime validation is implemented in Go and does not embed or enforce the JSON Schema. Validation is performed by the Go validator in `internal/schema/validate.go`.
+
+Embedding the JSON Schema at runtime and using it as the authoritative validator is planned for a future release but is not implemented yet.
 
 ## Validation rules
 

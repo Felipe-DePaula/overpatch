@@ -36,6 +36,8 @@ go build -a -o .\overpatch.exe .\cmd\overpatch
 Remove-Item .\overpatch.exe -ErrorAction SilentlyContinue
 ```
 
+Note: If `go test` is blocked by Windows Security, GitHub Actions (`.github/workflows/go.yml`) runs the complete test suite on every push and pull request.
+
 ## Windows executable manifest
 
 On Windows, executables with names containing words such as `patch`, `update`, `setup`, or `install` may trigger User Account Control heuristics if they do not include an application manifest.
