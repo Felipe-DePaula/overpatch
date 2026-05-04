@@ -44,7 +44,7 @@
        │
        ▼
 ┌─────────────┐
-│  Run Log    │  Persists input, diff, report, exit code
+│  Run Log    │  Persists input, diff, report, exit code    [planned — v0.2]
 │             │  to .overpatch/runs/<timestamp>/
 └─────────────┘
 ```
@@ -65,7 +65,7 @@ Each box is a Go package in `internal/`. Boundaries are enforced by the import g
 | Executor         | `internal/executor`  | Commit phase                                |
 | Diff             | `internal/diff`      | Unified diff rendering                      |
 | Reporter         | `internal/report`    | Per-operation results                       |
-| Run log          | `internal/runlog`    | `.overpatch/runs/` writer                   |
+| Run log          | `internal/runlog`    | `.overpatch/runs/` writer (planned — v0.2)  |
 | CLI              | `internal/cli`       | Cobra commands, wiring, exit codes          |
 
 ## Three-phase commit
@@ -76,17 +76,16 @@ Every `apply` proceeds in three strictly ordered phases:
 
 2. **Stage** — reads target files. Applies every operation against in-memory copies. Builds a `map[path][]byte` of post-change contents and a set of paths to delete. If any operation fails (anchor not found, occurrence mismatch, etc.), the stage aborts and nothing has been written.
 
-3. **Commit** — writes the staged map to disk. Each file write uses `os.WriteFile`, which is atomic at the file level on POSIX. If a write fails mid-batch (extremely rare: disk full, permissions), the run is marked failed and Git is the recovery path.
+3. **Commit** — writes the staged map to disk. `create` and `modify` writes use a temp file + `os.Rename`, which is atomic at the individual-file level. `delete` is basic and has no backup. If a write fails mid-batch (disk full, permissions), earlier files in the batch may already be written — the working tree can be left partially updated. There is no run log yet and no automatic rollback; manual recovery via Git is the recommended path.
 
 `plan` runs phases 1 and 2, prints the diff, and stops. `apply` runs all three.
 
 ## Atomicity guarantees
 
-- **Within a single file:** atomic via `os.WriteFile` semantics.
-- **Across multiple files:** best-effort. We write fast and sequentially after staging is complete. A crash between writes leaves the working tree partially updated — recoverable via Git (`git checkout -- .`).
-- **Reinforcement:** Overpatch refuses to `apply` on a dirty working tree unless `--force-dirty` is passed. This makes Git the safety net.
-
-A future version may stage to a temp directory and use `os.Rename` for stronger guarantees. Not worth the complexity for v0.1.
+- **Within a single file (`create`, `modify`):** atomic via write-to-temp + `os.Rename`.
+- **Within a single file (`delete`):** basic, no backup. Not recoverable by Overpatch itself.
+- **Across multiple files:** best-effort. Writes are sequential after staging is complete. A failure between writes leaves the working tree partially updated — recoverable via `git checkout -- .` when the project is tracked by Git.
+- **Dirty-tree guard:** planned for v0.3. Not implemented yet. In v0.1, `apply` does not check Git status before writing.
 
 ## Decisions
 

@@ -37,13 +37,22 @@ Every text-matching operation requires `expected_occurrences`. The executor coun
 
 Operations are staged in memory before any disk write. If staging fails for any operation, no writes occur.
 
-### Git as safety net
+Current implementation notes:
+- `create` and `modify` operations write via temp file + `os.Rename`, which is atomic at the individual-file level.
+- `delete` is basic and has no backup. A deleted file cannot be recovered by Overpatch itself.
+- Multi-file apply is not fully atomic. If a write fails after earlier files have already been written, the working tree may be left partially updated. Git is the recommended recovery path in that case, though Overpatch does not enforce its presence.
 
-By default, `apply` refuses on a dirty working tree. After apply, `git reset --hard` is always a one-line recovery.
+### Git as safety net (planned — v0.3)
 
-### Audit trail
+Git integration is planned for v0.3 and is not implemented yet.
 
-Every run writes input, diff, and result to `.overpatch/runs/<timestamp>/`. Even successful runs are reviewable.
+In v0.1, `apply` does not check Git status. There is no dirty-tree guard and no `--force-dirty` flag. If a write fails mid-batch, partial changes may remain on disk. Manual recovery via `git checkout -- .` is possible when the project is tracked by Git, but Overpatch does not enforce or verify this.
+
+Until Git integration lands, users should run Overpatch inside a Git repository and review the `plan` output before running `apply`.
+
+### Audit trail (planned — v0.2)
+
+Run logs are planned for v0.2 and are not written yet. In v0.1, no `.overpatch/runs/` directory is created and no run is persisted. Output goes to stdout/stderr only.
 
 ## Reporting vulnerabilities
 

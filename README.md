@@ -2,7 +2,7 @@
 
 **AI-assisted deterministic patching toolkit for codebases.**
 
-Overpatch turns natural-language change requests into structured, validated, auditable patch operations. The AI proposes. JSON formalizes. Overpatch validates, previews, and applies. Git proves.
+Overpatch turns natural-language change requests into structured, validated, auditable patch operations. The AI proposes. JSON formalizes. Overpatch validates, previews, and applies.
 
 ---
 
@@ -26,7 +26,7 @@ Overpatch is the second path.
 3. **Protocol** — The JSON conforms to the Overpatch schema: a list of typed operations with explicit anchors and expected match counts.
 4. **Executor** — Overpatch validates the JSON, stages every change in memory, generates a unified diff, and only then commits to disk — atomically.
 
-If anything fails — schema invalid, anchor not found, path unsafe, occurrence count mismatched — nothing is written.
+If anything fails during validation or staging — schema invalid, anchor not found, path unsafe, occurrence count mismatched — nothing is written. A failure during the commit phase (disk full, permissions) may leave the working tree partially updated; Git is the recommended recovery path.
 
 ## Status
 

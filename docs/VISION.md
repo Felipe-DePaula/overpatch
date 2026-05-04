@@ -32,9 +32,9 @@ The pipeline has clear stages, each a separable module:
 
 **Atomic by default.** All operations succeed, or none are written. There is no `--partial` flag and there will not be one.
 
-**Reversible.** Every apply is reversible via Git. Overpatch refuses to apply on a dirty working tree by default.
+**Reversible (planned).** Overpatch is designed to integrate with Git as a safety net. Dirty working tree refusal and built-in rollback are planned for v0.3. Until then, reversibility depends on the user's own Git workflow — run Overpatch inside a tracked repository and review the diff before applying.
 
-**Observable.** Every run leaves a trail in `.overpatch/runs/<timestamp>/` with the input, the diff, the report, and the exit status.
+**Observable (planned).** Every run will leave a trail in `.overpatch/runs/<timestamp>/` with the input, the diff, the report, and the exit status. Run logs are planned for v0.2 and are not written yet.
 
 **Pluggable at the edges, rigid in the middle.** The provider and the context builder can vary. The protocol and the executor cannot drift without a schema version bump.
 
