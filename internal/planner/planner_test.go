@@ -111,25 +111,6 @@ func TestPlanReplaceTextOccurrenceMismatch(t *testing.T) {
 	}
 }
 
-func TestPlanUnsupportedAction(t *testing.T) {
-	doc := successDoc(schema.Operation{
-		ID:                  "op_001",
-		Action:              schema.ActionInsertAfterLines,
-		Path:                "README.md",
-		FindLines:           []string{"old"},
-		InsertLines:         []string{"new"},
-		ExpectedOccurrences: 1,
-	})
-
-	_, err := Plan(doc, t.TempDir())
-	if err == nil {
-		t.Fatal("Plan returned nil error, want unsupported action error")
-	}
-	if !strings.Contains(err.Error(), "action not supported by plan yet") {
-		t.Fatalf("error = %q, want unsupported action", err)
-	}
-}
-
 func TestPlanMissingFile(t *testing.T) {
 	doc := successDoc(schema.Operation{
 		ID:                  "op_001",
@@ -282,6 +263,153 @@ func TestPlanReplaceLinesMissingFile(t *testing.T) {
 		Path:                "README.md",
 		FindLines:           []string{"old line 1", "old line 2"},
 		ReplaceLines:        []string{"new line 1"},
+		ExpectedOccurrences: 1,
+	})
+
+	_, err := Plan(doc, t.TempDir())
+	if err == nil {
+		t.Fatal("Plan returned nil error, want missing file error")
+	}
+	if !strings.Contains(err.Error(), "reading file") {
+		t.Fatalf("error = %q, want reading file", err)
+	}
+}
+
+func TestPlanInsertBeforeLinesSuccess(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "README.md")
+	original := "before\nanchor 1\nanchor 2\nafter\n"
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	doc := successDoc(schema.Operation{
+		ID:                  "op_001",
+		Action:              schema.ActionInsertBeforeLines,
+		Path:                "README.md",
+		FindLines:           []string{"anchor 1", "anchor 2"},
+		InsertLines:         []string{"inserted before"},
+		ExpectedOccurrences: 1,
+	})
+
+	result, err := Plan(doc, root)
+	if err != nil {
+		t.Fatalf("Plan returned error: %v", err)
+	}
+	if result.Status != StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	}
+	assertDiffOrder(t, result.Diff, "+inserted before\n", "+anchor 1\n")
+	assertFileContent(t, path, original)
+}
+
+func TestPlanInsertAfterLinesSuccess(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "README.md")
+	original := "before\nanchor 1\nanchor 2\nafter\n"
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	doc := successDoc(schema.Operation{
+		ID:                  "op_001",
+		Action:              schema.ActionInsertAfterLines,
+		Path:                "README.md",
+		FindLines:           []string{"anchor 1", "anchor 2"},
+		InsertLines:         []string{"inserted after"},
+		ExpectedOccurrences: 1,
+	})
+
+	result, err := Plan(doc, root)
+	if err != nil {
+		t.Fatalf("Plan returned error: %v", err)
+	}
+	if result.Status != StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	}
+	assertDiffOrder(t, result.Diff, "+anchor 2\n", "+inserted after\n")
+	assertFileContent(t, path, original)
+}
+
+func TestPlanInsertBeforeLinesMultipleOccurrences(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("anchor\nmiddle\nanchor\n"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	doc := successDoc(schema.Operation{
+		ID:                  "op_001",
+		Action:              schema.ActionInsertBeforeLines,
+		Path:                "README.md",
+		FindLines:           []string{"anchor"},
+		InsertLines:         []string{"inserted before"},
+		ExpectedOccurrences: 2,
+	})
+
+	result, err := Plan(doc, root)
+	if err != nil {
+		t.Fatalf("Plan returned error: %v", err)
+	}
+	if strings.Count(result.Diff, "+inserted before\n") != 2 {
+		t.Errorf("Diff should contain both insertions:\n%s", result.Diff)
+	}
+}
+
+func TestPlanInsertAfterLinesMultipleOccurrences(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("anchor\nmiddle\nanchor\n"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	doc := successDoc(schema.Operation{
+		ID:                  "op_001",
+		Action:              schema.ActionInsertAfterLines,
+		Path:                "README.md",
+		FindLines:           []string{"anchor"},
+		InsertLines:         []string{"inserted after"},
+		ExpectedOccurrences: 2,
+	})
+
+	result, err := Plan(doc, root)
+	if err != nil {
+		t.Fatalf("Plan returned error: %v", err)
+	}
+	if strings.Count(result.Diff, "+inserted after\n") != 2 {
+		t.Errorf("Diff should contain both insertions:\n%s", result.Diff)
+	}
+}
+
+func TestPlanInsertBeforeLinesOccurrenceMismatch(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("anchor\n"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	doc := successDoc(schema.Operation{
+		ID:                  "op_001",
+		Action:              schema.ActionInsertBeforeLines,
+		Path:                "README.md",
+		FindLines:           []string{"anchor"},
+		InsertLines:         []string{"inserted before"},
+		ExpectedOccurrences: 2,
+	})
+
+	_, err := Plan(doc, root)
+	if err == nil {
+		t.Fatal("Plan returned nil error, want mismatch error")
+	}
+	if !strings.Contains(err.Error(), "expected 2 occurrence(s), found 1") {
+		t.Fatalf("error = %q, want occurrence mismatch", err)
+	}
+}
+
+func TestPlanInsertAfterLinesMissingFile(t *testing.T) {
+	doc := successDoc(schema.Operation{
+		ID:                  "op_001",
+		Action:              schema.ActionInsertAfterLines,
+		Path:                "README.md",
+		FindLines:           []string{"anchor"},
+		InsertLines:         []string{"inserted after"},
 		ExpectedOccurrences: 1,
 	})
 
@@ -452,22 +580,81 @@ func TestPlanDeleteDirectoryFails(t *testing.T) {
 	}
 }
 
-func TestPlanUnsupportedInsertBeforeStillFails(t *testing.T) {
-	doc := successDoc(schema.Operation{
-		ID:                  "op_001",
-		Action:              schema.ActionInsertBeforeLines,
-		Path:                "README.md",
-		FindLines:           []string{"old"},
-		InsertLines:         []string{"new"},
-		ExpectedOccurrences: 1,
-	})
-
-	_, err := Plan(doc, t.TempDir())
-	if err == nil {
-		t.Fatal("Plan returned nil error, want unsupported action error")
+func TestPlanAllActionsSupported(t *testing.T) {
+	root := t.TempDir()
+	fixtures := map[string]string{
+		"text.txt":   "hello\n",
+		"lines.txt":  "old\nblock\n",
+		"before.txt": "anchor\n",
+		"after.txt":  "anchor\n",
+		"delete.txt": "remove\n",
 	}
-	if !strings.Contains(err.Error(), "action not supported by plan yet") {
-		t.Fatalf("error = %q, want unsupported action", err)
+	for name, content := range fixtures {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0o600); err != nil {
+			t.Fatalf("write fixture %s: %v", name, err)
+		}
+	}
+	content := "created\n"
+
+	doc := successDoc(
+		schema.Operation{
+			ID:                  "op_001",
+			Action:              schema.ActionReplaceText,
+			Path:                "text.txt",
+			Find:                "hello",
+			Replace:             "hi",
+			Occurrence:          "all",
+			ExpectedOccurrences: 1,
+		},
+		schema.Operation{
+			ID:                  "op_002",
+			Action:              schema.ActionReplaceLines,
+			Path:                "lines.txt",
+			FindLines:           []string{"old", "block"},
+			ReplaceLines:        []string{"new", "block"},
+			ExpectedOccurrences: 1,
+		},
+		schema.Operation{
+			ID:                  "op_003",
+			Action:              schema.ActionInsertBeforeLines,
+			Path:                "before.txt",
+			FindLines:           []string{"anchor"},
+			InsertLines:         []string{"inserted before"},
+			ExpectedOccurrences: 1,
+		},
+		schema.Operation{
+			ID:                  "op_004",
+			Action:              schema.ActionInsertAfterLines,
+			Path:                "after.txt",
+			FindLines:           []string{"anchor"},
+			InsertLines:         []string{"inserted after"},
+			ExpectedOccurrences: 1,
+		},
+		schema.Operation{
+			ID:      "op_005",
+			Action:  schema.ActionCreate,
+			Path:    "create.txt",
+			Content: &content,
+		},
+		schema.Operation{
+			ID:     "op_006",
+			Action: schema.ActionDelete,
+			Path:   "delete.txt",
+		},
+	)
+
+	result, err := Plan(doc, root)
+	if err != nil {
+		if strings.Contains(err.Error(), "action not supported by plan yet") {
+			t.Fatalf("Plan returned unsupported action error: %v", err)
+		}
+		t.Fatalf("Plan returned error: %v", err)
+	}
+	if result.Status != StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	}
+	if result.Operations != 6 {
+		t.Errorf("Operations = %d, want 6", result.Operations)
 	}
 }
 
@@ -477,5 +664,33 @@ func successDoc(ops ...schema.Operation) *schema.Document {
 		Status:        schema.StatusSuccess,
 		Reason:        "",
 		Operations:    ops,
+	}
+}
+
+func assertDiffOrder(t *testing.T, diff string, before string, after string) {
+	t.Helper()
+
+	beforeIndex := strings.Index(diff, before)
+	if beforeIndex == -1 {
+		t.Fatalf("Diff does not contain %q:\n%s", before, diff)
+	}
+	afterIndex := strings.Index(diff, after)
+	if afterIndex == -1 {
+		t.Fatalf("Diff does not contain %q:\n%s", after, diff)
+	}
+	if beforeIndex > afterIndex {
+		t.Fatalf("Diff has %q after %q:\n%s", before, after, diff)
+	}
+}
+
+func assertFileContent(t *testing.T, path string, want string) {
+	t.Helper()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read fixture after plan: %v", err)
+	}
+	if string(data) != want {
+		t.Fatalf("file was modified on disk: got %q, want %q", string(data), want)
 	}
 }

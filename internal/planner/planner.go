@@ -90,6 +90,34 @@ func Plan(doc *schema.Document, root string) (*Result, error) {
 			state := files[op.Path]
 			state.staged = next
 			state.existsStaged = true
+		case schema.ActionInsertBeforeLines:
+			current, err := stagedContent(root, op.Path, files)
+			if err != nil {
+				return nil, operationError(op.ID, "reading file: %v", err)
+			}
+
+			next, actual := insertBeforeLineBlock(current, op.FindLines, op.InsertLines)
+			if actual != op.ExpectedOccurrences {
+				return nil, operationError(op.ID, "expected %d occurrence(s), found %d", op.ExpectedOccurrences, actual)
+			}
+
+			state := files[op.Path]
+			state.staged = next
+			state.existsStaged = true
+		case schema.ActionInsertAfterLines:
+			current, err := stagedContent(root, op.Path, files)
+			if err != nil {
+				return nil, operationError(op.ID, "reading file: %v", err)
+			}
+
+			next, actual := insertAfterLineBlock(current, op.FindLines, op.InsertLines)
+			if actual != op.ExpectedOccurrences {
+				return nil, operationError(op.ID, "expected %d occurrence(s), found %d", op.ExpectedOccurrences, actual)
+			}
+
+			state := files[op.Path]
+			state.staged = next
+			state.existsStaged = true
 		case schema.ActionCreate:
 			if err := stageCreate(root, op, files); err != nil {
 				return nil, err
@@ -216,13 +244,42 @@ func replaceText(content string, find string, replace string, occurrence string)
 }
 
 func replaceLineBlock(content string, findLines []string, replaceLines []string) (string, int) {
+	return applyLineBlockOperation(content, findLines, replaceLines, lineBlockReplace)
+}
+
+func insertBeforeLineBlock(content string, findLines []string, insertLines []string) (string, int) {
+	return applyLineBlockOperation(content, findLines, insertLines, lineBlockInsertBefore)
+}
+
+func insertAfterLineBlock(content string, findLines []string, insertLines []string) (string, int) {
+	return applyLineBlockOperation(content, findLines, insertLines, lineBlockInsertAfter)
+}
+
+type lineBlockMode int
+
+const (
+	lineBlockReplace lineBlockMode = iota
+	lineBlockInsertBefore
+	lineBlockInsertAfter
+)
+
+func applyLineBlockOperation(content string, findLines []string, changeLines []string, mode lineBlockMode) (string, int) {
 	lines, trailingNewline := splitTextLines(content)
 	var next []string
 	count := 0
 
 	for i := 0; i < len(lines); {
 		if hasLineBlockAt(lines, findLines, i) {
-			next = append(next, replaceLines...)
+			switch mode {
+			case lineBlockReplace:
+				next = append(next, changeLines...)
+			case lineBlockInsertBefore:
+				next = append(next, changeLines...)
+				next = append(next, findLines...)
+			case lineBlockInsertAfter:
+				next = append(next, findLines...)
+				next = append(next, changeLines...)
+			}
 			i += len(findLines)
 			count++
 			continue
