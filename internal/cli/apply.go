@@ -55,7 +55,7 @@ var applyCmd = &cobra.Command{
 			return err
 		}
 
-		if stage.Status == planner.StatusNoChanges {
+		if stage.Status == schema.StatusNoChanges {
 			fmt.Fprintln(out, "apply: no_changes")
 			fmt.Fprintf(out, "reason: %s\n", stage.Reason)
 			fmt.Fprintln(out, "operations: 0")

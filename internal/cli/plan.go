@@ -45,7 +45,7 @@ var planCmd = &cobra.Command{
 			return err
 		}
 
-		if result.Status == planner.StatusNoChanges {
+		if result.Status == schema.StatusNoChanges {
 			fmt.Fprintln(out, "plan: no_changes")
 			fmt.Fprintf(out, "reason: %s\n", result.Reason)
 			fmt.Fprintln(out, "operations: 0")
