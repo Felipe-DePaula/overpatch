@@ -12,15 +12,15 @@ The first boss. Goal: a working CLI that validates, previews, and applies an Ove
 
 - 🟡 Project skeleton: Go module, Cobra CLI, Windows manifest, and basic repository structure are done. Makefile and lint configuration are pending.
 - ✅ CLI commands: `version`, `validate`, `inspect`, `plan`, and `apply` are done.
-- ✅ `validate`: JSON parser, structural validation, action-specific validation, and lexical path safety are done.
-- ⬜ JSON Schema embedding.
+- ✅ `validate`: JSON parser, structural validation, action-specific validation, operation id format validation, and lexical path safety are done.
+- ⬜ JSON Schema embedding/runtime enforcement.
 - ✅ `plan`: implemented for all basic v1 actions: `replace_text`, `replace_lines`, `insert_before_lines`, `insert_after_lines`, `create`, and `delete`. Staging is in memory and does not write to disk.
 - 🟡 `apply`: implemented with required `--yes`. It applies `created`, `modified`, and `deleted` file changes. `created` and `modified` use temp file + rename. `delete` is still basic and has no backup yet. Run log, git guard, and rollback are pending.
 - 🟡 Actions: action-specific validation and planning are done for all basic v1 actions. Runtime apply covers `created`, `modified`, and `deleted` file changes via `StageResult`. Additional safety and final integration work are pending.
 - 🟡 Three-phase commit: validate and stage exist, and the initial commit/apply phase exists. Robustness work remains: delete backups, run log, git guard, and rollback.
 - 🟡 Path safety: lexical validation for traversal, absolute paths, and sensitive path blocklist is done. Physical root/symlink validation is pending.
 - 🟡 Unified diff output: simple unified diff rendering exists in `internal/diff`. More advanced rendering, color, and optional side-by-side output are pending.
-- 🟡 Tests: unit tests for schema, safety, planner, diff, and executor are done. Integration test against a fixture project is pending.
+- 🟡 Tests: unit tests for schema, safety, planner, diff, and executor are done. GitHub Actions runs gofmt, go vet, go test, and go build. Integration test against a fixture project is pending.
 - ⬜ First release: `overpatch-{linux,darwin,windows}-{amd64,arm64}` binaries.
 
 ### File and directory scope
