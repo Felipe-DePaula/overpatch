@@ -4,14 +4,14 @@
 
 The first boss. Goal: a working CLI that applies a JSON document to a local directory.
 
-- [ ] Project skeleton (Go module, Makefile, lint config)
-- [ ] Schema structs and JSON Schema embedded
-- [ ] CLI commands: `validate`, `plan`, `apply`, `inspect`, `version`
+- [~] Project skeleton (Go module, Makefile, lint config)
+- [~] Schema structs and JSON Schema embedded
+- [~] CLI commands: `validate`, `plan`, `apply`, `inspect`, `version`
 - [ ] Actions: `replace_text`, `replace_lines`, `insert_before_lines`, `insert_after_lines`, `create`, `delete`
 - [ ] Three-phase commit (validate → stage → commit)
 - [ ] Path safety (traversal, absolute, blocklist)
 - [ ] Unified diff output
-- [ ] Integration test against a fixture project
+- [~] Integration test against a fixture project
 - [ ] First release: `overpatch-{linux,darwin,windows}-{amd64,arm64}` binaries
 
 ## v0.2 — Audit and polish
