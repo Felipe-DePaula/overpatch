@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Felipe-DePaula/overpatch/internal/executor"
+	"github.com/Felipe-DePaula/overpatch/internal/gitguard"
 	"github.com/Felipe-DePaula/overpatch/internal/planner"
 	"github.com/Felipe-DePaula/overpatch/internal/schema"
 	"github.com/spf13/cobra"
@@ -33,6 +34,18 @@ var applyCmd = &cobra.Command{
 		if err != nil {
 			fmt.Fprintln(out, "apply: failed")
 			fmt.Fprintf(out, "error: getting working directory: %s\n", err)
+			return err
+		}
+
+		if err := gitguard.CheckCleanWorkingTree(root); err != nil {
+			fmt.Fprintln(out, "apply: refused")
+			var r *gitguard.Refusal
+			if errors.As(err, &r) {
+				fmt.Fprintf(out, "error: %s\n", r.Error())
+				fmt.Fprintf(out, "hint: %s\n", r.Hint)
+			} else {
+				fmt.Fprintf(out, "error: %s\n", err)
+			}
 			return err
 		}
 

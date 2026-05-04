@@ -15,9 +15,9 @@ The first boss. Goal: a working CLI that validates, previews, and applies an Ove
 - ✅ `validate`: JSON parser, structural validation, action-specific validation, operation id format validation, and lexical path safety are done.
 - ⬜ JSON Schema embedding/runtime enforcement.
 - ✅ `plan`: implemented for all basic v1 actions: `replace_text`, `replace_lines`, `insert_before_lines`, `insert_after_lines`, `create`, and `delete`. Staging is in memory and does not write to disk.
-- 🟡 `apply`: implemented with required `--yes`. It applies `created`, `modified`, and `deleted` file changes. `created` and `modified` use temp file + rename. `delete` is still basic and has no backup yet. Run log, git guard, and rollback are pending.
+- 🟡 `apply`: implemented with required `--yes`. It applies `created`, `modified`, and `deleted` file changes. `created` and `modified` use temp file + rename. `delete` is still basic and has no backup yet. Git guard is done. Run log and rollback are pending.
 - 🟡 Actions: action-specific validation and planning are done for all basic v1 actions. Runtime apply covers `created`, `modified`, and `deleted` file changes via `StageResult`. Additional safety and final integration work are pending.
-- 🟡 Three-phase commit: validate and stage exist, and the initial commit/apply phase exists. Robustness work remains: delete backups, run log, git guard, and rollback.
+- 🟡 Three-phase commit: validate and stage exist, and the initial commit/apply phase exists. Robustness work remains: delete backups, run log, and rollback.
 - 🟡 Path safety: lexical validation for traversal, absolute paths, and sensitive path blocklist is done. Physical root/symlink validation is pending.
 - 🟡 Unified diff output: simple unified diff rendering exists in `internal/diff`. More advanced rendering, color, and optional side-by-side output are pending.
 - 🟡 Tests: unit tests for schema, safety, planner, diff, and executor are done. GitHub Actions runs gofmt, go vet, go test, and go build. Integration test against a fixture project is pending.
@@ -42,10 +42,10 @@ In v0.1, operations target files, not directories. Directories are not first-cla
 - ⬜ Better diff rendering, including optional side-by-side view.
 - ⬜ `overpatch report <run-id>` to inspect a previous run summary.
 
-## v0.3: Git integration
+## v0.3: Git integration (deeper)
 
-- ⬜ Detect whether the current directory is inside a Git repository.
-- ⬜ Refuse to apply on a dirty working tree by default.
+- ✅ Detect whether the current directory is inside a Git repository. *(done in v0.1)*
+- ✅ Refuse to apply on a dirty working tree by default. *(done in v0.1)*
 - ⬜ `--force-dirty` escape hatch.
 - ⬜ Suggest `git diff` after apply.
 - ⬜ `overpatch rollback` using Git when available.

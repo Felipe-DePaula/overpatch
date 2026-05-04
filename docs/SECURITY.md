@@ -42,13 +42,21 @@ Current implementation notes:
 - `delete` is basic and has no backup. A deleted file cannot be recovered by Overpatch itself.
 - Multi-file apply is not fully atomic. If a write fails after earlier files have already been written, the working tree may be left partially updated. Git is the recommended recovery path in that case, though Overpatch does not enforce its presence.
 
-### Git as safety net (planned — v0.3)
+### Git as safety net (v0.1)
 
-Git integration is planned for v0.3 and is not implemented yet.
+A Git guard is implemented for `apply` in v0.1. Before writing any file to disk, `apply` checks:
 
-In v0.1, `apply` does not check Git status. There is no dirty-tree guard and no `--force-dirty` flag. If a write fails mid-batch, partial changes may remain on disk. Manual recovery via `git checkout -- .` is possible when the project is tracked by Git, but Overpatch does not enforce or verify this.
+1. `git` is available in `PATH`.
+2. The current directory is inside a Git repository.
+3. The working tree is clean (no staged, unstaged, or untracked changes).
 
-Until Git integration lands, users should run Overpatch inside a Git repository and review the `plan` output before running `apply`.
+If any check fails, `apply` prints a clear `apply: refused` message with a hint and exits with code 1. No files are written.
+
+`validate`, `inspect`, and `plan` do not require Git and are unaffected by this guard.
+
+Overpatch does not install Git, initialize repositories automatically, or create commits. Recovery from a partial apply (disk full, permissions error mid-batch) relies on manual `git checkout -- .` or `git restore .`.
+
+`--force-dirty` (to bypass the clean-tree check) and `overpatch rollback` are still planned for a future version and are not implemented in v0.1.
 
 ### Audit trail (planned — v0.2)
 

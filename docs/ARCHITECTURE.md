@@ -70,24 +70,41 @@ Each box is a Go package in `internal/`. Boundaries are enforced by the import g
 | Run log          | `internal/runlog`    | `.overpatch/runs/` writer (planned — v0.2)  |
 | CLI              | `internal/cli`       | Cobra commands, wiring, exit codes          |
 
+## apply flow
+
+`apply` executes the following steps in order:
+
+1. **Require `--yes`** — refuses without the explicit flag.
+2. **Resolve root** — `os.Getwd()`.
+3. **Git guard** (`internal/gitguard`) — checks three preconditions before any disk write:
+   - `git` executable is available in `PATH`.
+   - Current directory is inside a Git repository.
+   - Working tree is clean (no staged, unstaged, or untracked changes).
+   If any check fails, `apply` prints `apply: refused` with a hint and exits. No files are written. `validate`, `inspect`, and `plan` skip this guard entirely.
+4. **Parse** — reads and validates the JSON document.
+5. **Stage** — loads target files and applies all operations in memory.
+6. **Commit** — writes the staged result to disk.
+
+There is no run log, no automatic git commit, and no rollback in v0.1. `--force-dirty` is planned for a future version.
+
 ## Three-phase commit
 
-Every `apply` proceeds in three strictly ordered phases:
+Every `apply` proceeds in three strictly ordered phases (steps 4–6 above):
 
 1. **Validate** — pure functions. Reads the JSON. Checks schema, paths, business rules. No filesystem reads of target files. Cheap. May reject the document.
 
 2. **Stage** — reads target files. Applies every operation against in-memory copies. Builds a `map[path][]byte` of post-change contents and a set of paths to delete. If any operation fails (anchor not found, occurrence mismatch, etc.), the stage aborts and nothing has been written.
 
-3. **Commit** — writes the staged map to disk. `create` and `modify` writes use a temp file + `os.Rename`, which is atomic at the individual-file level. `delete` is basic and has no backup. If a write fails mid-batch (disk full, permissions), earlier files in the batch may already be written — the working tree can be left partially updated. There is no run log yet and no automatic rollback; manual recovery via Git is the recommended path.
+3. **Commit** — writes the staged map to disk. `create` and `modify` writes use a temp file + `os.Rename`, which is atomic at the individual-file level. `delete` is basic and has no backup. If a write fails mid-batch (disk full, permissions), earlier files in the batch may already be written — the working tree can be left partially updated. There is no run log yet and no automatic rollback; manual recovery via `git restore .` is the recommended path.
 
-`plan` runs phases 1 and 2, prints the diff, and stops. `apply` runs all three.
+`plan` runs phases 1 and 2, prints the diff, and stops. `apply` runs the Git guard and then all three phases.
 
 ## Atomicity guarantees
 
 - **Within a single file (`create`, `modify`):** atomic via write-to-temp + `os.Rename`.
 - **Within a single file (`delete`):** basic, no backup. Not recoverable by Overpatch itself.
-- **Across multiple files:** best-effort. Writes are sequential after staging is complete. A failure between writes leaves the working tree partially updated — recoverable via `git checkout -- .` when the project is tracked by Git.
-- **Dirty-tree guard:** planned for v0.3. Not implemented yet. In v0.1, `apply` does not check Git status before writing.
+- **Across multiple files:** best-effort. Writes are sequential after staging is complete. A failure between writes leaves the working tree partially updated — recoverable via `git restore .` when the project is tracked by Git.
+- **Dirty-tree guard:** implemented in v0.1. `apply` refuses to write unless the Git working tree is clean. `--force-dirty` is planned for a future version.
 
 ## Decisions
 

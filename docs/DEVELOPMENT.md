@@ -2,13 +2,16 @@
 
 ## Prerequisites
 
-- Go installed and available in `PATH`
+- Go installed and available in `PATH` — required to build and run all commands.
+- Git installed and available in `PATH` — required only to use `apply`. `validate`, `inspect`, and `plan` work without Git.
 
 Check:
 
 ```powershell
 go version
 where go
+git --version
+where git
 ```
 
 On Windows, Go can be installed with:
@@ -17,12 +20,19 @@ On Windows, Go can be installed with:
 winget install GoLang.Go
 ```
 
-After installing Go, close and reopen your terminal before running build commands.
+Git can be installed with:
 
-Common Windows install path:
+```powershell
+winget install Git.Git
+```
+
+After installing either tool, close and reopen your terminal before running build commands.
+
+Common Windows install paths:
 
 ```text
 C:\Program Files\Go\bin
+C:\Program Files\Git\cmd
 ```
 
 ## Build check

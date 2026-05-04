@@ -59,6 +59,8 @@ overpatch apply ops.json        # apply atomically
 
 To build and test Overpatch locally, Go must be installed and available in your `PATH`.
 
+Git is required only for `apply`. `validate`, `inspect`, and `plan` work without Git. Overpatch does not install Git or initialize repositories automatically.
+
 See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) for setup and build notes.
 
 ## Documentation
