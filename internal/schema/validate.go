@@ -3,6 +3,8 @@ package schema
 import (
 	"fmt"
 	"strings"
+
+	"github.com/Felipe-DePaula/overpatch/internal/safety"
 )
 
 var allowedActions = map[string]bool{
@@ -61,6 +63,9 @@ func ValidateDocument(doc *Document) error {
 		}
 		if op.Path == "" {
 			return fmt.Errorf("operation %s: missing path", op.ID)
+		}
+		if err := safety.ValidateOperationPath(op.Path); err != nil {
+			return fmt.Errorf("operation %s: path invalid: %v", op.ID, err)
 		}
 		if seen[op.ID] {
 			return fmt.Errorf("duplicate operation id: %q", op.ID)

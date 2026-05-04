@@ -128,4 +128,13 @@ func TestParseFile(t *testing.T) {
 			t.Errorf("expected no error, got: %v", err)
 		}
 	})
+
+	t.Run("InvalidPathTraversal", func(t *testing.T) {
+		_, err := ParseFile("testdata/invalid_path_traversal.json")
+		if err == nil {
+			t.Errorf("expected error, got nil")
+		} else if !strings.Contains(err.Error(), "path invalid") || !strings.Contains(err.Error(), "path traversal") {
+			t.Errorf("expected error to contain %q and %q, got: %v", "path invalid", "path traversal", err)
+		}
+	})
 }
