@@ -12,14 +12,14 @@ The first boss. Goal: a working CLI that validates, previews, and applies an Ove
 
 - ✅ Project skeleton: Go module, Cobra CLI, Windows manifest, and basic repository structure are done. Makefile and lint configuration are pending.
 - ✅ CLI commands: `version`, `validate`, and `inspect` are done.
-- 🟡 `plan`: implemented for `replace_text` with in-memory staging and simple textual diff. Planning for `create`, `delete`, and line-based actions is pending.
+- ✅ `plan`: implemented for all basic v1 actions: `replace_text`, `replace_lines`, `insert_before_lines`, `insert_after_lines`, `create`, and `delete`. Staging is in memory, does not write to disk, and currently produces a simple textual diff that will be improved before `apply`.
 - 🟡 Schema structs and validation: structs, parser, structural validation, action-specific validation, and lexical path safety are done. JSON Schema embedding is pending.
-- 🟡 Actions: action-specific input validation is done for `replace_text`, `replace_lines`, `insert_before_lines`, `insert_after_lines`, `create`, and `delete`. Runtime execution is partially done for `replace_text` planning only.
+- 🟡 Actions: action-specific validation and planning are done for all basic v1 actions: `replace_text`, `replace_lines`, `insert_before_lines`, `insert_after_lines`, `create`, and `delete`. Runtime `apply` execution is pending.
 - ⬜ `apply`: pending.
 - ⬜ Three-phase commit: validate → stage → commit.
 - ✅ Path safety: lexical validation for traversal, absolute paths, and sensitive path blocklist is done. Physical root/symlink validation is pending for `plan`/`apply`.
-- 🟡 Unified diff output: simple textual diff exists for `replace_text` planning. Richer diff rendering is pending.
-- 🟡 Tests: schema, safety, and `replace_text` planner unit tests are done. Integration test against a fixture project is pending.
+- 🟡 Unified diff output: simple textual diff exists. A more robust diff renderer is pending.
+- 🟡 Tests: schema, safety, and planner unit tests are done. Integration test against a fixture project is pending.
 - ⬜ First release: `overpatch-{linux,darwin,windows}-{amd64,arm64}` binaries.
 
 ### File and directory scope
