@@ -841,6 +841,197 @@ func TestPlanAllActionsSupported(t *testing.T) {
 	}
 }
 
+func TestStageCreateThenDeleteSamePathProducesNoChange(t *testing.T) {
+	root := t.TempDir()
+	content := "created\n"
+
+	stage, err := Stage(successDoc(
+		schema.Operation{
+			ID:      "op_001",
+			Action:  schema.ActionCreate,
+			Path:    "x.txt",
+			Content: &content,
+		},
+		schema.Operation{
+			ID:     "op_002",
+			Action: schema.ActionDelete,
+			Path:   "x.txt",
+		},
+	), root)
+	if err != nil {
+		t.Fatalf("Stage returned error: %v", err)
+	}
+	if len(stage.Changes) != 0 {
+		t.Fatalf("len(Changes) = %d, want 0", len(stage.Changes))
+	}
+	if _, err := os.Stat(filepath.Join(root, "x.txt")); !os.IsNotExist(err) {
+		t.Fatal("x.txt should not exist on disk")
+	}
+}
+
+func TestStageDeleteThenCreateExistingFileProducesModifiedChange(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "x.txt")
+	if err := os.WriteFile(path, []byte("old\n"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	newContent := "new\n"
+
+	stage, err := Stage(successDoc(
+		schema.Operation{
+			ID:     "op_001",
+			Action: schema.ActionDelete,
+			Path:   "x.txt",
+		},
+		schema.Operation{
+			ID:      "op_002",
+			Action:  schema.ActionCreate,
+			Path:    "x.txt",
+			Content: &newContent,
+		},
+	), root)
+	if err != nil {
+		t.Fatalf("Stage returned error: %v", err)
+	}
+	if len(stage.Changes) != 1 {
+		t.Fatalf("len(Changes) = %d, want 1", len(stage.Changes))
+	}
+
+	change := stage.Changes[0]
+	if change.Kind != FileChangeModified {
+		t.Errorf("Kind = %q, want %q", change.Kind, FileChangeModified)
+	}
+	if !change.OriginalExists {
+		t.Error("OriginalExists = false, want true")
+	}
+	if !change.StagedExists {
+		t.Error("StagedExists = false, want true")
+	}
+	if change.Original != "old\n" {
+		t.Errorf("Original = %q, want %q", change.Original, "old\n")
+	}
+	if change.Staged != "new\n" {
+		t.Errorf("Staged = %q, want %q", change.Staged, "new\n")
+	}
+	assertFileContent(t, path, "old\n")
+}
+
+func TestStageReplaceThenDeleteProducesDeletedChange(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "x.txt")
+	if err := os.WriteFile(path, []byte("hello\n"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	stage, err := Stage(successDoc(
+		schema.Operation{
+			ID:                  "op_001",
+			Action:              schema.ActionReplaceText,
+			Path:                "x.txt",
+			Find:                "hello",
+			Replace:             "bye",
+			Occurrence:          "all",
+			ExpectedOccurrences: 1,
+		},
+		schema.Operation{
+			ID:     "op_002",
+			Action: schema.ActionDelete,
+			Path:   "x.txt",
+		},
+	), root)
+	if err != nil {
+		t.Fatalf("Stage returned error: %v", err)
+	}
+	if len(stage.Changes) != 1 {
+		t.Fatalf("len(Changes) = %d, want 1", len(stage.Changes))
+	}
+
+	change := stage.Changes[0]
+	if change.Kind != FileChangeDeleted {
+		t.Errorf("Kind = %q, want %q", change.Kind, FileChangeDeleted)
+	}
+	if !change.OriginalExists {
+		t.Error("OriginalExists = false, want true")
+	}
+	if change.StagedExists {
+		t.Error("StagedExists = true, want false")
+	}
+	assertFileContent(t, path, "hello\n")
+}
+
+func TestStageCreateThenReplaceTextProducesCreatedChange(t *testing.T) {
+	root := t.TempDir()
+	content := "hello\n"
+
+	stage, err := Stage(successDoc(
+		schema.Operation{
+			ID:      "op_001",
+			Action:  schema.ActionCreate,
+			Path:    "x.txt",
+			Content: &content,
+		},
+		schema.Operation{
+			ID:                  "op_002",
+			Action:              schema.ActionReplaceText,
+			Path:                "x.txt",
+			Find:                "hello",
+			Replace:             "bye",
+			Occurrence:          "all",
+			ExpectedOccurrences: 1,
+		},
+	), root)
+	if err != nil {
+		t.Fatalf("Stage returned error: %v", err)
+	}
+	if len(stage.Changes) != 1 {
+		t.Fatalf("len(Changes) = %d, want 1", len(stage.Changes))
+	}
+
+	change := stage.Changes[0]
+	if change.Kind != FileChangeCreated {
+		t.Errorf("Kind = %q, want %q", change.Kind, FileChangeCreated)
+	}
+	if change.Staged != "bye\n" {
+		t.Errorf("Staged = %q, want %q", change.Staged, "bye\n")
+	}
+	if _, err := os.Stat(filepath.Join(root, "x.txt")); !os.IsNotExist(err) {
+		t.Fatal("x.txt should not exist on disk")
+	}
+}
+
+func TestStageDeleteDirectoryStillFails(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "dir"), 0o700); err != nil {
+		t.Fatalf("create fixture directory: %v", err)
+	}
+
+	_, err := Stage(successDoc(schema.Operation{
+		ID:     "op_001",
+		Action: schema.ActionDelete,
+		Path:   "dir",
+	}), root)
+	if err == nil {
+		t.Fatal("Stage returned nil error, want directory target error")
+	}
+	if !strings.Contains(err.Error(), "delete target is not a file") {
+		t.Fatalf("error = %q, want delete target is not a file", err)
+	}
+}
+
+func TestStageDeleteMissingStillFails(t *testing.T) {
+	_, err := Stage(successDoc(schema.Operation{
+		ID:     "op_001",
+		Action: schema.ActionDelete,
+		Path:   "missing.txt",
+	}), t.TempDir())
+	if err == nil {
+		t.Fatal("Stage returned nil error, want missing file error")
+	}
+	if !strings.Contains(err.Error(), "file does not exist") {
+		t.Fatalf("error = %q, want file does not exist", err)
+	}
+}
+
 func successDoc(ops ...schema.Operation) *schema.Document {
 	return &schema.Document{
 		SchemaVersion: schema.SchemaVersionV1,

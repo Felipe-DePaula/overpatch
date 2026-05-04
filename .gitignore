@@ -14,3 +14,7 @@ overpatch.exe
 # Local builds
 *.exe
 
+
+# Local agent settings
+.claude/
+

@@ -68,6 +68,7 @@ type fileState struct {
 	staged         string
 	existsOriginal bool
 	existsStaged   bool
+	isDir          bool
 	loaded         bool
 }
 
@@ -231,15 +232,7 @@ func stageDelete(root string, op schema.Operation, files map[string]*fileState) 
 	if !state.existsStaged {
 		return operationError(op.ID, "file does not exist: %s", op.Path)
 	}
-
-	info, err := os.Stat(fullPath(root, op.Path))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return operationError(op.ID, "file does not exist: %s", op.Path)
-		}
-		return operationError(op.ID, "checking file: %v", err)
-	}
-	if info.IsDir() {
+	if state.isDir {
 		return operationError(op.ID, "delete target is not a file: %s", op.Path)
 	}
 
@@ -266,6 +259,7 @@ func loadFileState(root string, path string, files map[string]*fileState) (*file
 	if info.IsDir() {
 		state.existsOriginal = true
 		state.existsStaged = true
+		state.isDir = true
 		return state, nil
 	}
 
