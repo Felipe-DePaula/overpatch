@@ -51,4 +51,81 @@ func TestParseFile(t *testing.T) {
 			t.Errorf("expected error to contain %q, got: %v", "action invalid", err)
 		}
 	})
+
+	t.Run("ReplaceTextMissingFind", func(t *testing.T) {
+		_, err := ParseFile("testdata/replace_text_missing_find.json")
+		if err == nil {
+			t.Errorf("expected error, got nil")
+		} else if !strings.Contains(err.Error(), "find required for replace_text") {
+			t.Errorf("expected error to contain %q, got: %v", "find required for replace_text", err)
+		}
+	})
+
+	t.Run("ReplaceTextInvalidOccurrence", func(t *testing.T) {
+		_, err := ParseFile("testdata/replace_text_invalid_occurrence.json")
+		if err == nil {
+			t.Errorf("expected error, got nil")
+		} else if !strings.Contains(err.Error(), "occurrence invalid for replace_text") {
+			t.Errorf("expected error to contain %q, got: %v", "occurrence invalid for replace_text", err)
+		}
+	})
+
+	t.Run("ReplaceTextMissingExpectedOccurrences", func(t *testing.T) {
+		_, err := ParseFile("testdata/replace_text_missing_expected.json")
+		if err == nil {
+			t.Errorf("expected error, got nil")
+		} else if !strings.Contains(err.Error(), "expected_occurrences must be >= 1 for replace_text") {
+			t.Errorf("expected error to contain %q, got: %v", "expected_occurrences must be >= 1 for replace_text", err)
+		}
+	})
+
+	t.Run("ReplaceLinesMissingFindLines", func(t *testing.T) {
+		_, err := ParseFile("testdata/replace_lines_missing_find.json")
+		if err == nil {
+			t.Errorf("expected error, got nil")
+		} else if !strings.Contains(err.Error(), "find_lines required for replace_lines") {
+			t.Errorf("expected error to contain %q, got: %v", "find_lines required for replace_lines", err)
+		}
+	})
+
+	t.Run("ReplaceLinesMissingReplaceLines", func(t *testing.T) {
+		_, err := ParseFile("testdata/replace_lines_missing_replace.json")
+		if err == nil {
+			t.Errorf("expected error, got nil")
+		} else if !strings.Contains(err.Error(), "replace_lines required for replace_lines") {
+			t.Errorf("expected error to contain %q, got: %v", "replace_lines required for replace_lines", err)
+		}
+	})
+
+	t.Run("InsertAfterMissingInsertLines", func(t *testing.T) {
+		_, err := ParseFile("testdata/insert_after_missing_insert.json")
+		if err == nil {
+			t.Errorf("expected error, got nil")
+		} else if !strings.Contains(err.Error(), "insert_lines required for insert_after_lines") {
+			t.Errorf("expected error to contain %q, got: %v", "insert_lines required for insert_after_lines", err)
+		}
+	})
+
+	t.Run("CreateMissingContent", func(t *testing.T) {
+		_, err := ParseFile("testdata/create_missing_content.json")
+		if err == nil {
+			t.Errorf("expected error, got nil")
+		} else if !strings.Contains(err.Error(), "content required for create") {
+			t.Errorf("expected error to contain %q, got: %v", "content required for create", err)
+		}
+	})
+
+	t.Run("CreateEmptyContentValid", func(t *testing.T) {
+		_, err := ParseFile("testdata/create_empty_content.json")
+		if err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+	})
+
+	t.Run("DeleteValid", func(t *testing.T) {
+		_, err := ParseFile("testdata/delete_valid.json")
+		if err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+	})
 }

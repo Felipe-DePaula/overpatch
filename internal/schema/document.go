@@ -22,7 +22,7 @@ type Operation struct {
 	FindLines           []string `json:"find_lines,omitempty"`
 	ReplaceLines        []string `json:"replace_lines,omitempty"`
 	InsertLines         []string `json:"insert_lines,omitempty"`
-	Content             string   `json:"content,omitempty"`
+	Content             *string  `json:"content,omitempty"`
 }
 
 // SchemaVersionV1 is the only supported schema version.

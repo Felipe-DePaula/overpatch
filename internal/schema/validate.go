@@ -15,8 +15,9 @@ var allowedActions = map[string]bool{
 }
 
 // ValidateDocument checks that doc conforms to the Overpatch v1 protocol.
-// It performs structural validation only; it does not inspect file paths or
-// action-specific field requirements.
+// ValidateDocument checks that doc conforms to the Overpatch v1 protocol.
+// It performs structural and action-specific validation, but it does not
+// inspect target files or enforce path safety.
 func ValidateDocument(doc *Document) error {
 	if doc == nil {
 		return fmt.Errorf("document is nil")
@@ -65,6 +66,55 @@ func ValidateDocument(doc *Document) error {
 			return fmt.Errorf("duplicate operation id: %q", op.ID)
 		}
 		seen[op.ID] = true
+
+		switch op.Action {
+		case ActionReplaceText:
+			if op.Find == "" {
+				return fmt.Errorf("operation %s: find required for replace_text", op.ID)
+			}
+			if op.Occurrence != "all" && op.Occurrence != "first" {
+				return fmt.Errorf("operation %s: occurrence invalid for replace_text: %q", op.ID, op.Occurrence)
+			}
+			if op.ExpectedOccurrences < 1 {
+				return fmt.Errorf("operation %s: expected_occurrences must be >= 1 for replace_text", op.ID)
+			}
+		case ActionReplaceLines:
+			if len(op.FindLines) == 0 {
+				return fmt.Errorf("operation %s: find_lines required for replace_lines", op.ID)
+			}
+			if op.ReplaceLines == nil {
+				return fmt.Errorf("operation %s: replace_lines required for replace_lines", op.ID)
+			}
+			if op.ExpectedOccurrences < 1 {
+				return fmt.Errorf("operation %s: expected_occurrences must be >= 1 for replace_lines", op.ID)
+			}
+		case ActionInsertBeforeLines:
+			if len(op.FindLines) == 0 {
+				return fmt.Errorf("operation %s: find_lines required for insert_before_lines", op.ID)
+			}
+			if len(op.InsertLines) == 0 {
+				return fmt.Errorf("operation %s: insert_lines required for insert_before_lines", op.ID)
+			}
+			if op.ExpectedOccurrences < 1 {
+				return fmt.Errorf("operation %s: expected_occurrences must be >= 1 for insert_before_lines", op.ID)
+			}
+		case ActionInsertAfterLines:
+			if len(op.FindLines) == 0 {
+				return fmt.Errorf("operation %s: find_lines required for insert_after_lines", op.ID)
+			}
+			if len(op.InsertLines) == 0 {
+				return fmt.Errorf("operation %s: insert_lines required for insert_after_lines", op.ID)
+			}
+			if op.ExpectedOccurrences < 1 {
+				return fmt.Errorf("operation %s: expected_occurrences must be >= 1 for insert_after_lines", op.ID)
+			}
+		case ActionCreate:
+			if op.Content == nil {
+				return fmt.Errorf("operation %s: content required for create", op.ID)
+			}
+		case ActionDelete:
+			// No extra fields required
+		}
 	}
 
 	return nil

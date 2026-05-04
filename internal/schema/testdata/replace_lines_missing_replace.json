@@ -1,0 +1,14 @@
+{
+  "schema_version": "overpatch/v1",
+  "status": "success",
+  "reason": "",
+  "operations": [
+    {
+      "id": "op_001",
+      "action": "replace_lines",
+      "path": "README.md",
+      "find_lines": ["hello"],
+      "expected_occurrences": 1
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": "overpatch/v1",
+  "status": "success",
+  "reason": "",
+  "operations": [
+    {
+      "id": "op_001",
+      "action": "replace_text",
+      "path": "README.md",
+      "find": "Hello World",
+      "replace": "Olá Mundo",
+      "occurrence": "all"
+    }
+  ]
+}
