@@ -35,6 +35,14 @@ func (err *OperationError) Error() string {
 	return fmt.Sprintf("operation %s: %s", err.OperationID, err.Message)
 }
 
+type fileState struct {
+	original       string
+	staged         string
+	existsOriginal bool
+	existsStaged   bool
+	loaded         bool
+}
+
 // Plan validates staging requirements, applies supported operations to
 // in-memory file contents, and returns a textual preview.
 func Plan(doc *schema.Document, root string) (*Result, error) {
@@ -50,30 +58,39 @@ func Plan(doc *schema.Document, root string) (*Result, error) {
 		}, nil
 	}
 
-	originals := make(map[string]string)
-	staged := make(map[string]string)
+	files := make(map[string]*fileState)
 
 	for _, op := range doc.Operations {
-		if op.Action != schema.ActionReplaceText {
+		switch op.Action {
+		case schema.ActionReplaceText:
+			current, err := stagedContent(root, op.Path, files)
+			if err != nil {
+				return nil, operationError(op.ID, "reading file: %v", err)
+			}
+
+			actual := strings.Count(current, op.Find)
+			if actual != op.ExpectedOccurrences {
+				return nil, operationError(op.ID, "expected %d occurrence(s), found %d", op.ExpectedOccurrences, actual)
+			}
+
+			state := files[op.Path]
+			state.staged = replaceText(current, op.Find, op.Replace, op.Occurrence)
+			state.existsStaged = true
+		case schema.ActionCreate:
+			if err := stageCreate(root, op, files); err != nil {
+				return nil, err
+			}
+		case schema.ActionDelete:
+			if err := stageDelete(root, op, files); err != nil {
+				return nil, err
+			}
+		default:
 			return nil, operationError(op.ID, "action not supported by plan yet: %s", op.Action)
 		}
-
-		current, err := stagedContent(root, op.Path, originals, staged)
-		if err != nil {
-			return nil, operationError(op.ID, "reading file: %v", err)
-		}
-
-		actual := strings.Count(current, op.Find)
-		if actual != op.ExpectedOccurrences {
-			return nil, operationError(op.ID, "expected %d occurrence(s), found %d", op.ExpectedOccurrences, actual)
-		}
-
-		next := replaceText(current, op.Find, op.Replace, op.Occurrence)
-		staged[op.Path] = next
 	}
 
-	changedPaths := changedFilePaths(originals, staged)
-	diff := renderDiff(originals, staged, changedPaths)
+	changedPaths := changedFilePaths(files)
+	diff := renderDiff(files, changedPaths)
 
 	return &Result{
 		Status:       StatusSuccess,
@@ -90,22 +107,91 @@ func operationError(operationID string, format string, args ...any) *OperationEr
 	}
 }
 
-func stagedContent(root string, path string, originals map[string]string, staged map[string]string) (string, error) {
-	if content, ok := staged[path]; ok {
-		return content, nil
-	}
-	if content, ok := originals[path]; ok {
-		return content, nil
-	}
-
-	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+func stagedContent(root string, path string, files map[string]*fileState) (string, error) {
+	state, err := loadFileState(root, path, files)
 	if err != nil {
 		return "", err
 	}
+	if !state.existsStaged {
+		return "", os.ErrNotExist
+	}
+	return state.staged, nil
+}
 
-	content := string(data)
-	originals[path] = content
-	return content, nil
+func stageCreate(root string, op schema.Operation, files map[string]*fileState) error {
+	state, err := loadFileState(root, op.Path, files)
+	if err != nil {
+		return operationError(op.ID, "checking file: %v", err)
+	}
+	if state.existsStaged {
+		return operationError(op.ID, "file already exists: %s", op.Path)
+	}
+
+	state.staged = *op.Content
+	state.existsStaged = true
+	return nil
+}
+
+func stageDelete(root string, op schema.Operation, files map[string]*fileState) error {
+	state, err := loadFileState(root, op.Path, files)
+	if err != nil {
+		return operationError(op.ID, "checking file: %v", err)
+	}
+	if !state.existsStaged {
+		return operationError(op.ID, "file does not exist: %s", op.Path)
+	}
+
+	info, err := os.Stat(fullPath(root, op.Path))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return operationError(op.ID, "file does not exist: %s", op.Path)
+		}
+		return operationError(op.ID, "checking file: %v", err)
+	}
+	if info.IsDir() {
+		return operationError(op.ID, "delete target is not a file: %s", op.Path)
+	}
+
+	state.staged = ""
+	state.existsStaged = false
+	return nil
+}
+
+func loadFileState(root string, path string, files map[string]*fileState) (*fileState, error) {
+	if state, ok := files[path]; ok {
+		return state, nil
+	}
+
+	state := &fileState{loaded: true}
+	files[path] = state
+
+	info, err := os.Stat(fullPath(root, path))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return state, nil
+		}
+		return nil, err
+	}
+	if info.IsDir() {
+		state.existsOriginal = true
+		state.existsStaged = true
+		return state, nil
+	}
+
+	data, err := os.ReadFile(fullPath(root, path))
+	if err != nil {
+		return nil, err
+	}
+
+	state.original = string(data)
+	state.staged = state.original
+	state.existsOriginal = true
+	state.existsStaged = true
+	return state, nil
+}
+
+func fullPath(root string, path string) string {
+	return filepath.Join(root, filepath.FromSlash(path))
 }
 
 func replaceText(content string, find string, replace string, occurrence string) string {
@@ -115,10 +201,10 @@ func replaceText(content string, find string, replace string, occurrence string)
 	return strings.ReplaceAll(content, find, replace)
 }
 
-func changedFilePaths(originals map[string]string, staged map[string]string) []string {
-	paths := make([]string, 0, len(staged))
-	for path, next := range staged {
-		if originals[path] != next {
+func changedFilePaths(files map[string]*fileState) []string {
+	paths := make([]string, 0, len(files))
+	for path, state := range files {
+		if state.existsOriginal != state.existsStaged || state.original != state.staged {
 			paths = append(paths, path)
 		}
 	}
@@ -126,21 +212,35 @@ func changedFilePaths(originals map[string]string, staged map[string]string) []s
 	return paths
 }
 
-func renderDiff(originals map[string]string, staged map[string]string, paths []string) string {
+func renderDiff(files map[string]*fileState, paths []string) string {
 	var builder strings.Builder
 	for i, path := range paths {
 		if i > 0 {
 			builder.WriteByte('\n')
 		}
+		state := files[path]
+
 		builder.WriteString("--- ")
-		builder.WriteString(path)
+		if state.existsOriginal {
+			builder.WriteString(path)
+		} else {
+			builder.WriteString("/dev/null")
+		}
 		builder.WriteByte('\n')
 		builder.WriteString("+++ ")
-		builder.WriteString(path)
+		if state.existsStaged {
+			builder.WriteString(path)
+		} else {
+			builder.WriteString("/dev/null")
+		}
 		builder.WriteByte('\n')
 		builder.WriteString("@@\n")
-		builder.WriteString(prefixLines("-", originals[path]))
-		builder.WriteString(prefixLines("+", staged[path]))
+		if state.existsOriginal {
+			builder.WriteString(prefixLines("-", state.original))
+		}
+		if state.existsStaged {
+			builder.WriteString(prefixLines("+", state.staged))
+		}
 	}
 	return builder.String()
 }

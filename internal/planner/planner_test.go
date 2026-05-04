@@ -150,6 +150,183 @@ func TestPlanMissingFile(t *testing.T) {
 	}
 }
 
+func TestPlanCreateFileSuccess(t *testing.T) {
+	root := t.TempDir()
+	content := "hello\n"
+	path := filepath.Join(root, "new.txt")
+
+	doc := successDoc(schema.Operation{
+		ID:      "op_001",
+		Action:  schema.ActionCreate,
+		Path:    "new.txt",
+		Content: &content,
+	})
+
+	result, err := Plan(doc, root)
+	if err != nil {
+		t.Fatalf("Plan returned error: %v", err)
+	}
+	if result.Status != StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	}
+	if result.FilesChanged != 1 {
+		t.Errorf("FilesChanged = %d, want 1", result.FilesChanged)
+	}
+	if !strings.Contains(result.Diff, "/dev/null") {
+		t.Errorf("Diff should indicate a new file:\n%s", result.Diff)
+	}
+	if !strings.Contains(result.Diff, "+hello") {
+		t.Errorf("Diff should contain created content:\n%s", result.Diff)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("created file exists on disk after plan, stat error: %v", err)
+	}
+}
+
+func TestPlanCreateEmptyFileSuccess(t *testing.T) {
+	root := t.TempDir()
+	content := ""
+	path := filepath.Join(root, "empty.txt")
+
+	doc := successDoc(schema.Operation{
+		ID:      "op_001",
+		Action:  schema.ActionCreate,
+		Path:    "empty.txt",
+		Content: &content,
+	})
+
+	result, err := Plan(doc, root)
+	if err != nil {
+		t.Fatalf("Plan returned error: %v", err)
+	}
+	if result.Status != StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	}
+	if result.FilesChanged != 1 {
+		t.Errorf("FilesChanged = %d, want 1", result.FilesChanged)
+	}
+	if !strings.Contains(result.Diff, "--- /dev/null") || !strings.Contains(result.Diff, "+++ empty.txt") {
+		t.Errorf("Diff should indicate an empty new file:\n%s", result.Diff)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("created file exists on disk after plan, stat error: %v", err)
+	}
+}
+
+func TestPlanCreateFileAlreadyExists(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "existing.txt"), []byte("already here\n"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	content := "new content\n"
+
+	doc := successDoc(schema.Operation{
+		ID:      "op_001",
+		Action:  schema.ActionCreate,
+		Path:    "existing.txt",
+		Content: &content,
+	})
+
+	_, err := Plan(doc, root)
+	if err == nil {
+		t.Fatal("Plan returned nil error, want file already exists error")
+	}
+	if !strings.Contains(err.Error(), "file already exists") {
+		t.Fatalf("error = %q, want file already exists", err)
+	}
+}
+
+func TestPlanDeleteFileSuccess(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "old.txt")
+	original := "remove me\n"
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	doc := successDoc(schema.Operation{
+		ID:     "op_001",
+		Action: schema.ActionDelete,
+		Path:   "old.txt",
+	})
+
+	result, err := Plan(doc, root)
+	if err != nil {
+		t.Fatalf("Plan returned error: %v", err)
+	}
+	if result.Status != StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	}
+	if result.FilesChanged != 1 {
+		t.Errorf("FilesChanged = %d, want 1", result.FilesChanged)
+	}
+	if !strings.Contains(result.Diff, "+++ /dev/null") {
+		t.Errorf("Diff should indicate deletion:\n%s", result.Diff)
+	}
+	if !strings.Contains(result.Diff, "-remove me") {
+		t.Errorf("Diff should contain removed content:\n%s", result.Diff)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("deleted file should still exist on disk after plan: %v", err)
+	}
+}
+
+func TestPlanDeleteMissingFile(t *testing.T) {
+	doc := successDoc(schema.Operation{
+		ID:     "op_001",
+		Action: schema.ActionDelete,
+		Path:   "missing.txt",
+	})
+
+	_, err := Plan(doc, t.TempDir())
+	if err == nil {
+		t.Fatal("Plan returned nil error, want missing file error")
+	}
+	if !strings.Contains(err.Error(), "file does not exist") {
+		t.Fatalf("error = %q, want file does not exist", err)
+	}
+}
+
+func TestPlanDeleteDirectoryFails(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "docs"), 0o700); err != nil {
+		t.Fatalf("create fixture directory: %v", err)
+	}
+
+	doc := successDoc(schema.Operation{
+		ID:     "op_001",
+		Action: schema.ActionDelete,
+		Path:   "docs",
+	})
+
+	_, err := Plan(doc, root)
+	if err == nil {
+		t.Fatal("Plan returned nil error, want directory target error")
+	}
+	if !strings.Contains(err.Error(), "delete target is not a file") {
+		t.Fatalf("error = %q, want delete target is not a file", err)
+	}
+}
+
+func TestPlanUnsupportedActionStillFails(t *testing.T) {
+	doc := successDoc(schema.Operation{
+		ID:                  "op_001",
+		Action:              schema.ActionReplaceLines,
+		Path:                "README.md",
+		FindLines:           []string{"old"},
+		ReplaceLines:        []string{"new"},
+		ExpectedOccurrences: 1,
+	})
+
+	_, err := Plan(doc, t.TempDir())
+	if err == nil {
+		t.Fatal("Plan returned nil error, want unsupported action error")
+	}
+	if !strings.Contains(err.Error(), "action not supported by plan yet") {
+		t.Fatalf("error = %q, want unsupported action", err)
+	}
+}
+
 func successDoc(ops ...schema.Operation) *schema.Document {
 	return &schema.Document{
 		SchemaVersion: schema.SchemaVersionV1,
