@@ -17,6 +17,33 @@ const (
 	StatusNoChanges = "no_changes"
 )
 
+// FileChangeKind classifies how a staged file differs from disk.
+type FileChangeKind string
+
+const (
+	FileChangeModified FileChangeKind = "modified"
+	FileChangeCreated  FileChangeKind = "created"
+	FileChangeDeleted  FileChangeKind = "deleted"
+)
+
+// FileChange describes the original and staged content for a single path.
+type FileChange struct {
+	Path           string
+	Kind           FileChangeKind
+	Original       string
+	Staged         string
+	OriginalExists bool
+	StagedExists   bool
+}
+
+// StageResult describes the outcome of applying operations in memory.
+type StageResult struct {
+	Status     string
+	Reason     string
+	Operations int
+	Changes    []FileChange
+}
+
 // Result describes the outcome of a planning run.
 type Result struct {
 	Status       string
@@ -44,15 +71,15 @@ type fileState struct {
 	loaded         bool
 }
 
-// Plan validates staging requirements, applies supported operations to
-// in-memory file contents, and returns a textual preview.
-func Plan(doc *schema.Document, root string) (*Result, error) {
+// Stage validates staging requirements and applies supported operations to
+// in-memory file contents without writing to disk.
+func Stage(doc *schema.Document, root string) (*StageResult, error) {
 	if doc == nil {
 		return nil, fmt.Errorf("document is nil")
 	}
 
 	if doc.Status == schema.StatusNoChanges {
-		return &Result{
+		return &StageResult{
 			Status:     StatusNoChanges,
 			Reason:     doc.Reason,
 			Operations: 0,
@@ -132,14 +159,35 @@ func Plan(doc *schema.Document, root string) (*Result, error) {
 		}
 	}
 
-	changedPaths := changedFilePaths(files)
-	diff := renderDiff(files, changedPaths)
+	changes := collectFileChanges(files)
+
+	return &StageResult{
+		Status:     StatusSuccess,
+		Operations: len(doc.Operations),
+		Changes:    changes,
+	}, nil
+}
+
+// Plan stages supported operations in memory and returns a textual preview.
+func Plan(doc *schema.Document, root string) (*Result, error) {
+	stage, err := Stage(doc, root)
+	if err != nil {
+		return nil, err
+	}
+
+	if stage.Status == StatusNoChanges {
+		return &Result{
+			Status:     StatusNoChanges,
+			Reason:     stage.Reason,
+			Operations: 0,
+		}, nil
+	}
 
 	return &Result{
 		Status:       StatusSuccess,
-		Operations:   len(doc.Operations),
-		FilesChanged: len(changedPaths),
-		Diff:         diff,
+		Operations:   stage.Operations,
+		FilesChanged: len(stage.Changes),
+		Diff:         renderDiff(stage.Changes),
 	}, nil
 }
 
@@ -329,26 +377,50 @@ func hasLineBlockAt(lines []string, findLines []string, start int) bool {
 	return true
 }
 
-func changedFilePaths(files map[string]*fileState) []string {
-	paths := make([]string, 0, len(files))
+func collectFileChanges(files map[string]*fileState) []FileChange {
+	changes := make([]FileChange, 0, len(files))
 	for path, state := range files {
 		if state.existsOriginal != state.existsStaged || state.original != state.staged {
-			paths = append(paths, path)
+			changes = append(changes, FileChange{
+				Path:           path,
+				Kind:           fileChangeKind(state),
+				Original:       state.original,
+				Staged:         state.staged,
+				OriginalExists: state.existsOriginal,
+				StagedExists:   state.existsStaged,
+			})
 		}
 	}
-	sort.Strings(paths)
-	return paths
+	sort.Slice(changes, func(i, j int) bool {
+		return changes[i].Path < changes[j].Path
+	})
+	return changes
 }
 
-func renderDiff(files map[string]*fileState, paths []string) string {
+func fileChangeKind(state *fileState) FileChangeKind {
+	if !state.existsOriginal && state.existsStaged {
+		return FileChangeCreated
+	}
+	if state.existsOriginal && !state.existsStaged {
+		return FileChangeDeleted
+	}
+	return FileChangeModified
+}
+
+func renderDiff(changes []FileChange) string {
 	var builder strings.Builder
-	for i, path := range paths {
+	for i, change := range changes {
 		if i > 0 {
 			builder.WriteByte('\n')
 		}
-		state := files[path]
 
-		builder.WriteString(diff.Unified(path, state.original, state.staged, state.existsOriginal, state.existsStaged))
+		builder.WriteString(diff.Unified(
+			change.Path,
+			change.Original,
+			change.Staged,
+			change.OriginalExists,
+			change.StagedExists,
+		))
 	}
 	return builder.String()
 }

@@ -53,6 +53,189 @@ func TestPlanReplaceTextAllSuccess(t *testing.T) {
 	}
 }
 
+func TestStageReplaceTextProducesModifiedChange(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "README.md")
+	original := "Hello World\n"
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	stage, err := Stage(successDoc(schema.Operation{
+		ID:                  "op_001",
+		Action:              schema.ActionReplaceText,
+		Path:                "README.md",
+		Find:                "Hello World",
+		Replace:             "Ola Mundo",
+		Occurrence:          "all",
+		ExpectedOccurrences: 1,
+	}), root)
+	if err != nil {
+		t.Fatalf("Stage returned error: %v", err)
+	}
+	if len(stage.Changes) != 1 {
+		t.Fatalf("len(Changes) = %d, want 1", len(stage.Changes))
+	}
+
+	change := stage.Changes[0]
+	if change.Kind != FileChangeModified {
+		t.Errorf("Kind = %q, want %q", change.Kind, FileChangeModified)
+	}
+	if !change.OriginalExists {
+		t.Error("OriginalExists = false, want true")
+	}
+	if !change.StagedExists {
+		t.Error("StagedExists = false, want true")
+	}
+	if !strings.Contains(change.Original, "Hello World") {
+		t.Errorf("Original = %q, want old text", change.Original)
+	}
+	if !strings.Contains(change.Staged, "Ola Mundo") {
+		t.Errorf("Staged = %q, want new text", change.Staged)
+	}
+	assertFileContent(t, path, original)
+}
+
+func TestStageCreateProducesCreatedChange(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "new.txt")
+	content := "hello\n"
+
+	stage, err := Stage(successDoc(schema.Operation{
+		ID:      "op_001",
+		Action:  schema.ActionCreate,
+		Path:    "new.txt",
+		Content: &content,
+	}), root)
+	if err != nil {
+		t.Fatalf("Stage returned error: %v", err)
+	}
+	if len(stage.Changes) != 1 {
+		t.Fatalf("len(Changes) = %d, want 1", len(stage.Changes))
+	}
+
+	change := stage.Changes[0]
+	if change.Kind != FileChangeCreated {
+		t.Errorf("Kind = %q, want %q", change.Kind, FileChangeCreated)
+	}
+	if change.OriginalExists {
+		t.Error("OriginalExists = true, want false")
+	}
+	if !change.StagedExists {
+		t.Error("StagedExists = false, want true")
+	}
+	if change.Staged != content {
+		t.Errorf("Staged = %q, want %q", change.Staged, content)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("created file exists on disk after stage, stat error: %v", err)
+	}
+}
+
+func TestStageDeleteProducesDeletedChange(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "old.txt")
+	original := "remove me\n"
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	stage, err := Stage(successDoc(schema.Operation{
+		ID:     "op_001",
+		Action: schema.ActionDelete,
+		Path:   "old.txt",
+	}), root)
+	if err != nil {
+		t.Fatalf("Stage returned error: %v", err)
+	}
+	if len(stage.Changes) != 1 {
+		t.Fatalf("len(Changes) = %d, want 1", len(stage.Changes))
+	}
+
+	change := stage.Changes[0]
+	if change.Kind != FileChangeDeleted {
+		t.Errorf("Kind = %q, want %q", change.Kind, FileChangeDeleted)
+	}
+	if !change.OriginalExists {
+		t.Error("OriginalExists = false, want true")
+	}
+	if change.StagedExists {
+		t.Error("StagedExists = true, want false")
+	}
+	if change.Original != original {
+		t.Errorf("Original = %q, want %q", change.Original, original)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("deleted file should still exist on disk after stage: %v", err)
+	}
+}
+
+func TestStageMultipleChangesSortedByPath(t *testing.T) {
+	root := t.TempDir()
+	fixtures := map[string]string{
+		"z.txt": "z old\n",
+		"a.txt": "a old\n",
+	}
+	for name, content := range fixtures {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0o600); err != nil {
+			t.Fatalf("write fixture %s: %v", name, err)
+		}
+	}
+
+	stage, err := Stage(successDoc(
+		schema.Operation{
+			ID:                  "op_001",
+			Action:              schema.ActionReplaceText,
+			Path:                "z.txt",
+			Find:                "old",
+			Replace:             "new",
+			Occurrence:          "all",
+			ExpectedOccurrences: 1,
+		},
+		schema.Operation{
+			ID:                  "op_002",
+			Action:              schema.ActionReplaceText,
+			Path:                "a.txt",
+			Find:                "old",
+			Replace:             "new",
+			Occurrence:          "all",
+			ExpectedOccurrences: 1,
+		},
+	), root)
+	if err != nil {
+		t.Fatalf("Stage returned error: %v", err)
+	}
+	if len(stage.Changes) != 2 {
+		t.Fatalf("len(Changes) = %d, want 2", len(stage.Changes))
+	}
+	if stage.Changes[0].Path != "a.txt" || stage.Changes[1].Path != "z.txt" {
+		t.Fatalf("changes are not sorted by path: %#v", stage.Changes)
+	}
+}
+
+func TestPlanStillRendersDiff(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("Hello World\n"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	result, err := Plan(successDoc(schema.Operation{
+		ID:                  "op_001",
+		Action:              schema.ActionReplaceText,
+		Path:                "README.md",
+		Find:                "Hello World",
+		Replace:             "Ola Mundo",
+		Occurrence:          "all",
+		ExpectedOccurrences: 1,
+	}), root)
+	if err != nil {
+		t.Fatalf("Plan returned error: %v", err)
+	}
+	if result.Diff == "" {
+		t.Fatal("Diff is empty, want rendered diff")
+	}
+}
+
 func TestPlanReplaceTextFirstSuccess(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("one one\n"), 0o600); err != nil {
