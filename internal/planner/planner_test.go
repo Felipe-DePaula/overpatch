@@ -31,8 +31,8 @@ func TestPlanReplaceTextAllSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Plan returned error: %v", err)
 	}
-	if result.Status != StatusSuccess {
-		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	if result.Status != schema.StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, schema.StatusSuccess)
 	}
 	if result.Operations != 1 {
 		t.Errorf("Operations = %d, want 1", result.Operations)
@@ -335,8 +335,8 @@ func TestPlanReplaceLinesSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Plan returned error: %v", err)
 	}
-	if result.Status != StatusSuccess {
-		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	if result.Status != schema.StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, schema.StatusSuccess)
 	}
 	if !strings.Contains(result.Diff, "old line 1") {
 		t.Errorf("Diff should contain old line:\n%s", result.Diff)
@@ -479,8 +479,8 @@ func TestPlanInsertBeforeLinesSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Plan returned error: %v", err)
 	}
-	if result.Status != StatusSuccess {
-		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	if result.Status != schema.StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, schema.StatusSuccess)
 	}
 	assertDiffOrder(t, result.Diff, "+inserted before\n", "+anchor 1\n")
 	assertFileContent(t, path, original)
@@ -507,8 +507,8 @@ func TestPlanInsertAfterLinesSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Plan returned error: %v", err)
 	}
-	if result.Status != StatusSuccess {
-		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	if result.Status != schema.StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, schema.StatusSuccess)
 	}
 	assertDiffOrder(t, result.Diff, "+anchor 2\n", "+inserted after\n")
 	assertFileContent(t, path, original)
@@ -621,8 +621,8 @@ func TestPlanCreateFileSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Plan returned error: %v", err)
 	}
-	if result.Status != StatusSuccess {
-		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	if result.Status != schema.StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, schema.StatusSuccess)
 	}
 	if result.FilesChanged != 1 {
 		t.Errorf("FilesChanged = %d, want 1", result.FilesChanged)
@@ -654,8 +654,8 @@ func TestPlanCreateEmptyFileSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Plan returned error: %v", err)
 	}
-	if result.Status != StatusSuccess {
-		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	if result.Status != schema.StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, schema.StatusSuccess)
 	}
 	if result.FilesChanged != 1 {
 		t.Errorf("FilesChanged = %d, want 1", result.FilesChanged)
@@ -709,8 +709,8 @@ func TestPlanDeleteFileSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Plan returned error: %v", err)
 	}
-	if result.Status != StatusSuccess {
-		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	if result.Status != schema.StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, schema.StatusSuccess)
 	}
 	if result.FilesChanged != 1 {
 		t.Errorf("FilesChanged = %d, want 1", result.FilesChanged)
@@ -833,8 +833,8 @@ func TestPlanAllActionsSupported(t *testing.T) {
 		}
 		t.Fatalf("Plan returned error: %v", err)
 	}
-	if result.Status != StatusSuccess {
-		t.Fatalf("Status = %q, want %q", result.Status, StatusSuccess)
+	if result.Status != schema.StatusSuccess {
+		t.Fatalf("Status = %q, want %q", result.Status, schema.StatusSuccess)
 	}
 	if result.Operations != 6 {
 		t.Errorf("Operations = %d, want 6", result.Operations)

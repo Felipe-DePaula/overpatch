@@ -12,11 +12,6 @@ import (
 	"github.com/Felipe-DePaula/overpatch/internal/schema"
 )
 
-const (
-	StatusSuccess   = "success"
-	StatusNoChanges = "no_changes"
-)
-
 // FileChangeKind classifies how a staged file differs from disk.
 type FileChangeKind string
 
@@ -81,7 +76,7 @@ func Stage(doc *schema.Document, root string) (*StageResult, error) {
 
 	if doc.Status == schema.StatusNoChanges {
 		return &StageResult{
-			Status:     StatusNoChanges,
+			Status:     schema.StatusNoChanges,
 			Reason:     doc.Reason,
 			Operations: 0,
 		}, nil
@@ -163,7 +158,7 @@ func Stage(doc *schema.Document, root string) (*StageResult, error) {
 	changes := collectFileChanges(files)
 
 	return &StageResult{
-		Status:     StatusSuccess,
+		Status:     schema.StatusSuccess,
 		Operations: len(doc.Operations),
 		Changes:    changes,
 	}, nil
@@ -176,16 +171,16 @@ func Plan(doc *schema.Document, root string) (*Result, error) {
 		return nil, err
 	}
 
-	if stage.Status == StatusNoChanges {
+	if stage.Status == schema.StatusNoChanges {
 		return &Result{
-			Status:     StatusNoChanges,
+			Status:     schema.StatusNoChanges,
 			Reason:     stage.Reason,
 			Operations: 0,
 		}, nil
 	}
 
 	return &Result{
-		Status:       StatusSuccess,
+		Status:       schema.StatusSuccess,
 		Operations:   stage.Operations,
 		FilesChanged: len(stage.Changes),
 		Diff:         renderDiff(stage.Changes),

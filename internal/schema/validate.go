@@ -17,9 +17,8 @@ var allowedActions = map[string]bool{
 }
 
 // ValidateDocument checks that doc conforms to the Overpatch v1 protocol.
-// ValidateDocument checks that doc conforms to the Overpatch v1 protocol.
-// It performs structural and action-specific validation, but it does not
-// inspect target files or enforce path safety.
+// It performs structural validation, action-specific validation, and lexical
+// path safety checks, but it does not inspect target file contents or resolve symlinks.
 func ValidateDocument(doc *Document) error {
 	if doc == nil {
 		return fmt.Errorf("document is nil")

@@ -9,12 +9,8 @@ coverage.out
 node_modules/
 go-tmp/
 
-overpatch.exe
-*.exe
 # Local builds
 *.exe
 
-
 # Local agent settings
 .claude/
-
