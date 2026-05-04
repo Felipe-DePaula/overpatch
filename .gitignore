@@ -7,7 +7,7 @@ coverage.out
 .vscode/
 .DS_Store
 node_modules/
-
+go-tmp/
 
 overpatch.exe
 *.exe
