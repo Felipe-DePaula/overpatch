@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -61,6 +62,10 @@ func CheckCleanWorkingTree(root string) error {
 // variables stripped. Stripping prevents inherited GIT_DIR / GIT_WORK_TREE from
 // the calling process (e.g. a test runner inside a repo) from overriding the
 // working-directory detection that the check depends on.
+// GIT_CEILING_DIRECTORIES is set to the parent of dir so that git will not
+// walk above dir when searching for a .git directory; this prevents a parent
+// repo (e.g. the repo the test runner itself lives in) from being discovered
+// when checking an unrelated temp directory.
 func gitCmd(dir string, args ...string) *exec.Cmd {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
@@ -73,12 +78,15 @@ func gitCmd(dir string, args ...string) *exec.Cmd {
 		}
 		switch key {
 		case "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE",
-			"GIT_OBJECT_DIRECTORY", "GIT_COMMON_DIR":
+			"GIT_OBJECT_DIRECTORY", "GIT_COMMON_DIR",
+			"GIT_CEILING_DIRECTORIES":
 			// skip: these override repo detection and must not be inherited
 		default:
 			stripped = append(stripped, kv)
 		}
 	}
+	// Limit upward traversal to dir itself; git stops before checking the parent.
+	stripped = append(stripped, "GIT_CEILING_DIRECTORIES="+filepath.Dir(dir))
 	cmd.Env = stripped
 	return cmd
 }

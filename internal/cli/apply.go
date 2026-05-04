@@ -75,6 +75,14 @@ var applyCmd = &cobra.Command{
 			return nil
 		}
 
+		if stage.Status == schema.StatusFailed {
+			fmt.Fprintln(out, "apply: failed")
+			if stage.Reason != "" {
+				fmt.Fprintf(out, "reason: %s\n", stage.Reason)
+			}
+			return fmt.Errorf("document status is failed")
+		}
+
 		if err := executor.Apply(stage, root); err != nil {
 			fmt.Fprintln(out, "apply: failed")
 			fmt.Fprintf(out, "error: %s\n", err)

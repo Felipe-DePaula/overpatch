@@ -1032,6 +1032,90 @@ func TestStageDeleteMissingStillFails(t *testing.T) {
 	}
 }
 
+func TestStageStatusFailed(t *testing.T) {
+	doc := &schema.Document{
+		SchemaVersion: schema.SchemaVersionV1,
+		Status:        schema.StatusFailed,
+		Reason:        "model could not determine safe edits",
+		Operations:    []schema.Operation{},
+	}
+	result, err := Stage(doc, t.TempDir())
+	if err != nil {
+		t.Fatalf("Stage returned error: %v", err)
+	}
+	if result.Status != schema.StatusFailed {
+		t.Errorf("Status = %q, want %q", result.Status, schema.StatusFailed)
+	}
+	if result.Reason != doc.Reason {
+		t.Errorf("Reason = %q, want %q", result.Reason, doc.Reason)
+	}
+	if result.Operations != 0 {
+		t.Errorf("Operations = %d, want 0", result.Operations)
+	}
+	if len(result.Changes) != 0 {
+		t.Errorf("Changes = %d, want 0", len(result.Changes))
+	}
+}
+
+func TestStageStatusFailedNoReason(t *testing.T) {
+	doc := &schema.Document{
+		SchemaVersion: schema.SchemaVersionV1,
+		Status:        schema.StatusFailed,
+		Reason:        "no patch possible",
+		Operations:    []schema.Operation{},
+	}
+	result, err := Stage(doc, t.TempDir())
+	if err != nil {
+		t.Fatalf("Stage returned error: %v", err)
+	}
+	if result.Status != schema.StatusFailed {
+		t.Errorf("Status = %q, want %q", result.Status, schema.StatusFailed)
+	}
+}
+
+func TestPlanStatusFailed(t *testing.T) {
+	doc := &schema.Document{
+		SchemaVersion: schema.SchemaVersionV1,
+		Status:        schema.StatusFailed,
+		Reason:        "context window exceeded",
+		Operations:    []schema.Operation{},
+	}
+	result, err := Plan(doc, t.TempDir())
+	if err != nil {
+		t.Fatalf("Plan returned error: %v", err)
+	}
+	if result.Status != schema.StatusFailed {
+		t.Errorf("Status = %q, want %q", result.Status, schema.StatusFailed)
+	}
+	if result.Reason != doc.Reason {
+		t.Errorf("Reason = %q, want %q", result.Reason, doc.Reason)
+	}
+	if result.Operations != 0 {
+		t.Errorf("Operations = %d, want 0", result.Operations)
+	}
+}
+
+func TestStageStatusFailedDoesNotTouchDisk(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "untouched.txt")
+	original := "should not change\n"
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	doc := &schema.Document{
+		SchemaVersion: schema.SchemaVersionV1,
+		Status:        schema.StatusFailed,
+		Reason:        "something went wrong",
+		Operations:    []schema.Operation{},
+	}
+	if _, err := Stage(doc, root); err != nil {
+		t.Fatalf("Stage returned error: %v", err)
+	}
+
+	assertFileContent(t, path, original)
+}
+
 func successDoc(ops ...schema.Operation) *schema.Document {
 	return &schema.Document{
 		SchemaVersion: schema.SchemaVersionV1,

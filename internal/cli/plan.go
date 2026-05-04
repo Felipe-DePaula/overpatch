@@ -52,6 +52,14 @@ var planCmd = &cobra.Command{
 			return nil
 		}
 
+		if result.Status == schema.StatusFailed {
+			fmt.Fprintln(out, "plan: failed")
+			if result.Reason != "" {
+				fmt.Fprintf(out, "reason: %s\n", result.Reason)
+			}
+			return fmt.Errorf("document status is failed")
+		}
+
 		fmt.Fprintln(out, "plan: success")
 		fmt.Fprintf(out, "operations: %d\n", result.Operations)
 		fmt.Fprintf(out, "files changed: %d\n", result.FilesChanged)

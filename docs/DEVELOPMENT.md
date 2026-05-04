@@ -101,15 +101,28 @@ If `rsrc` is not available in the current shell path, run it directly from the G
 From the repository root:
 
 ```powershell
-go clean -cache
-go build -a -o .\overpatch.exe .\cmd\overpatch
-.\overpatch.exe version
+New-Item -ItemType Directory -Force .\bin | Out-Null
+go build -o .\bin\overpatch.exe .\cmd\overpatch
+.\bin\overpatch.exe version
 ```
 
 Expected output:
 
 ```text
 overpatch dev
+```
+
+Build with a release version injected:
+
+```powershell
+go build -ldflags "-X github.com/Felipe-DePaula/overpatch/internal/cli.Version=v0.1.0" -o .\bin\overpatch.exe .\cmd\overpatch
+.\bin\overpatch.exe version
+```
+
+Expected output:
+
+```text
+overpatch v0.1.0
 ```
 
 ## Git ignore guidance

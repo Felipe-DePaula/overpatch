@@ -82,6 +82,14 @@ func Stage(doc *schema.Document, root string) (*StageResult, error) {
 		}, nil
 	}
 
+	if doc.Status == schema.StatusFailed {
+		return &StageResult{
+			Status:     schema.StatusFailed,
+			Reason:     doc.Reason,
+			Operations: 0,
+		}, nil
+	}
+
 	files := make(map[string]*fileState)
 
 	for _, op := range doc.Operations {
@@ -174,6 +182,14 @@ func Plan(doc *schema.Document, root string) (*Result, error) {
 	if stage.Status == schema.StatusNoChanges {
 		return &Result{
 			Status:     schema.StatusNoChanges,
+			Reason:     stage.Reason,
+			Operations: 0,
+		}, nil
+	}
+
+	if stage.Status == schema.StatusFailed {
+		return &Result{
+			Status:     schema.StatusFailed,
 			Reason:     stage.Reason,
 			Operations: 0,
 		}, nil
