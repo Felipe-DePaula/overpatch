@@ -63,6 +63,7 @@ overpatch apply ops.json        # apply atomically
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — versioned milestones
 - [`docs/SECURITY.md`](docs/SECURITY.md) — threat model and safeguards
 - [`docs/GLOSSARY.md`](docs/GLOSSARY.md) — terminology
+- [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — local development and build notes
 
 ## Experiments
 

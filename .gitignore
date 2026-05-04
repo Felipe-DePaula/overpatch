@@ -7,3 +7,10 @@ coverage.out
 .vscode/
 .DS_Store
 node_modules/
+
+
+overpatch.exe
+*.exe
+# Local builds
+*.exe
+
