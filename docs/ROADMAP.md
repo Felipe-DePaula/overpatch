@@ -10,7 +10,7 @@ Legend:
 
 The first boss. Goal: a working CLI that validates, previews, and applies an Overpatch JSON document to files in a local project.
 
-- 🟡 Project skeleton: Go module, Cobra CLI, Windows manifest, and basic repository structure are done. Makefile and lint configuration are pending.
+- ✅ Project skeleton: Go module, Cobra CLI, Windows manifest, Makefile, and basic repository structure are done.
 - ✅ CLI commands: `version`, `validate`, `inspect`, `plan`, and `apply` are done.
 - ✅ `validate`: JSON parser, structural validation, action-specific validation, operation id format validation, and lexical path safety are done.
 - ⬜ JSON Schema embedding/runtime enforcement.
@@ -20,8 +20,12 @@ The first boss. Goal: a working CLI that validates, previews, and applies an Ove
 - 🟡 Three-phase commit: validate and stage exist, and the initial commit/apply phase exists. Robustness work remains: delete backups, run log, and rollback.
 - 🟡 Path safety: lexical validation for traversal, absolute paths, and sensitive path blocklist is done. Physical root/symlink validation is pending.
 - 🟡 Unified diff output: simple unified diff rendering exists in `internal/diff`. More advanced rendering, color, and optional side-by-side output are pending.
-- 🟡 Tests: unit tests for schema, safety, planner, diff, and executor are done. GitHub Actions runs gofmt, go vet, go test, and go build. Integration test against a fixture project is pending.
+- ✅ Tests: unit tests for schema, safety, planner, diff, and executor are done. Integration tests via the CLI layer are done, covering validate, inspect, plan, apply (all v1 actions), dirty-tree refusal, anchor-not-found, occurrence mismatch, atomicity, and security path cases. GitHub Actions runs gofmt, go vet, go test, and go build.
 - ⬜ First release: `overpatch-{linux,darwin,windows}-{amd64,arm64}` binaries.
+
+### Summary
+
+All executor logic, commands, git guard, three-phase commit, path safety, diff output, Makefile, and tests are implemented. The executor MVP is functionally complete. Two items remain before the first release: JSON Schema runtime enforcement and cross-platform release binaries.
 
 ### File and directory scope
 

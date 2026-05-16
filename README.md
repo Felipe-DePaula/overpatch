@@ -30,7 +30,7 @@ If anything fails during validation or staging — schema invalid, anchor not fo
 
 ## Status
 
-**v0.1 in development.** Schema is not stable yet. The CLI executor is the first deliverable; context builder and provider integrations come next.
+**v0.1 executor is functional.** Schema is not stable yet. The CLI executor is the first deliverable; context builder and provider integrations come next.
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
@@ -47,13 +47,45 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Quick start
 
-Not yet. The executor is being built. Once available:
+The executor is functional. Build it first:
+
+```powershell
+go build -o .\bin\overpatch.exe .\cmd\overpatch
+```
+
+Then use it against an Overpatch JSON document you have already produced (see [`docs/PROTOCOL.md`](docs/PROTOCOL.md) for the format):
 
 ```bash
-overpatch validate ops.json     # schema + safety check
-overpatch plan ops.json         # show diff without writing
-overpatch apply ops.json        # apply atomically
+# 1. Check schema, IDs, paths, and safety rules — reads no target files.
+overpatch validate ops.json
+
+# 2. Show a summary of the parsed document.
+overpatch inspect ops.json
+
+# 3. Stage all operations in memory, print a unified diff. Nothing is written.
+overpatch plan ops.json
+
+# 4. Apply atomically. Requires --yes and a clean Git working tree.
+overpatch apply --yes ops.json
 ```
+
+### What apply requires
+
+- `--yes` — refuses without this flag; there is no interactive prompt.
+- Git must be installed and `ops.json` must be applied inside a Git repository.
+- The working tree must be clean (no staged, unstaged, or untracked changes).
+
+If any of these checks fail, `apply` prints `apply: refused` with a hint and exits. No files are written.
+
+### What v0.1 does not do
+
+- It does not build context packs or read your project automatically.
+- It does not call any LLM, OpenAI, Anthropic, or Ollama.
+- It does not infer which files should change from a natural-language prompt.
+- It does not create Git commits or run rollback automatically.
+- It does not write run logs; output goes to stdout/stderr only.
+
+In v0.1 the JSON document must be produced by a human or an external LLM session. See [`docs/PIPELINE.md`](docs/PIPELINE.md) for the full responsibility boundary.
 
 ## Development
 

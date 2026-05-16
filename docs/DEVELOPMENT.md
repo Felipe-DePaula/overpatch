@@ -35,18 +35,57 @@ C:\Program Files\Go\bin
 C:\Program Files\Git\cmd
 ```
 
+## Makefile
+
+A `Makefile` is available at the repository root for common development tasks. It requires `make` to be installed (available by default on Linux and macOS; on Windows, install via Git Bash, MSYS2, or `winget install GnuWin32.Make`).
+
+| Target | What it does |
+| --- | --- |
+| `make fmt` | Applies `gofmt -w` to `./cmd` and `./internal`. |
+| `make vet` | Runs `go vet ./...`. |
+| `make test` | Runs `go test ./...`. |
+| `make build` | Builds the binary into `bin/` (`bin/overpatch` on Linux/macOS, `bin/overpatch.exe` on Windows). |
+| `make check` | Checks that all files are gofmt-clean, then runs vet and test. Suitable for pre-commit or CI. |
+| `make clean` | Removes the `bin/` directory. |
+
+### PowerShell alternatives (Windows without make)
+
+```powershell
+# fmt — apply gofmt
+gofmt -w .\cmd .\internal
+
+# vet
+go vet ./...
+
+# test
+go test ./...
+
+# build
+New-Item -ItemType Directory -Force .\bin | Out-Null
+go build -o .\bin\overpatch.exe .\cmd\overpatch
+
+# check — verify gofmt, vet, test
+$unformatted = gofmt -l .\cmd .\internal
+if ($unformatted) { Write-Error "gofmt: unformatted files:`n$unformatted"; exit 1 }
+go vet ./...
+go test ./...
+
+# clean
+Remove-Item -Recurse -Force .\bin -ErrorAction SilentlyContinue
+```
+
 ## Build check
 
 From the repository root:
 
 ```powershell
 go test ./...
-go build -a -o .\overpatch.exe .\cmd\overpatch
-.\overpatch.exe version
-Remove-Item .\overpatch.exe -ErrorAction SilentlyContinue
+go build -o .\bin\overpatch.exe .\cmd\overpatch
+.\bin\overpatch.exe version
+Remove-Item -Recurse -Force .\bin -ErrorAction SilentlyContinue
 ```
 
-Note: If `go test` is blocked by Windows Security, GitHub Actions (`.github/workflows/go.yml`) runs the complete test suite on every push and pull request.
+Note: On Windows, `go test` may be blocked by an Application Control policy (AppLocker or Windows Defender Application Control). The test binary is compiled into `%TEMP%` and may be denied execution. If this happens, GitHub Actions (`.github/workflows/go.yml`) runs the complete test suite on every push and pull request.
 
 ## Windows executable manifest
 
